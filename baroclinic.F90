@@ -81,7 +81,7 @@
    logical (log_kind) :: &
       reset_to_freezing   ! flag to prevent very cold water
 
-   real (r8) ,dimension(196,164,60), public, target :: ARRAY 
+   real (r8) ,dimension(196,164,60), public :: ARRAY 
 
    integer :: done = 1
 
@@ -550,7 +550,7 @@
  if(my_task == master_task .and. done == 1) then
 
 
-  do k=1,2
+  do k=1,1
    do iblock = 1,nblocks_clinic
       this_block = get_block(blocks_clinic(iblock),iblock)
 
@@ -560,9 +560,31 @@
   enddo
 
    open(unit=21,file="/home/aketh/ocn_correctness_data/16OMP_block1.txt",status="unknown",position="append",action="write",form="formatted")
- 
 
-  do k=1,2 
+
+  do k=1,1
+   do j=3,194
+     do i=3,162
+
+           write (21,*),ARRAY(i,j,k),i,j,k
+
+     enddo
+   enddo
+  enddo
+
+
+
+  do k=2,2
+   do iblock = 1,nblocks_clinic
+      this_block = get_block(blocks_clinic(iblock),iblock)
+
+        call merger( TRACER (:,:,k,1,curtime,iblock) , ARRAY(:,:,k) , iblock , this_block)
+
+   enddo
+  enddo
+
+
+  do k=2,2 
    do j=3,194
      do i=3,162
 
@@ -572,7 +594,20 @@
    enddo  
   enddo
 
+  open(unit=22,file="/home/aketh/ocn_correctness_data/16OMP_block2.txt",status="unknown",position="append",action="write",form="formatted")
+
+  do k=1,2
+   do j=3,194
+     do i=3,162
+
+           write (22,*),ARRAY(i,j,k),i,j,k
+
+     enddo
+   enddo
+  enddo
+
    close(21)
+   close(22)
 
    done = 0
  
@@ -2157,7 +2192,8 @@
 
    integer (int_kind), save :: done = 1
 
-   integer (int_kind) :: my_grid_blockno, block_row, block_col , i_start,j_start
+   integer (int_kind) :: my_grid_blockno, block_row, &
+   block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je
 
    logical (log_kind) :: written(196,164,60)
 
@@ -2183,18 +2219,36 @@
 
          print *,i_start,j_start,iblock
 
-         do j=this_block%jb,this_block%je
-              i_start = block_col * (nx_block - 4) + 1 + 2
-               do i=this_block%ib,this_block%ie
+         i_end = i_start + (this_block%ie - this_block%ib) 
 
-                      ARRAY(i_start,j_start) = TCUR(i,j)
+         print *,i_end
 
-                      i_start = i_start + 1
+         j_end = j_start + (this_block%je - this_block%jb)
+
+         print *,j_end
+
+         ib = this_block%ib
+ 
+         jb = this_block%jb
+
+         ie = this_block%ie 
+
+         je = this_block%je
+
+         ARRAY(i_start:i_end,j_start:j_end) = TCUR(ib:ie,jb:je)
+ 
+         !do j=this_block%jb,this_block%je
+              !i_start = block_col * (nx_block - 4) + 1 + 2
+               !do i=this_block%ib,this_block%ie
+
+                      !ARRAY(i_start,j_start) = TCUR(i,j)
+
+                      !i_start = i_start + 1
 
 
-               end do
-               j_start = j_start + 1
-         end do
+               !end do
+               !j_start = j_start + 1
+         !end do
 
  end subroutine merger 
 
