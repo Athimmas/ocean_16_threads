@@ -81,16 +81,16 @@
    logical (log_kind) :: &
       reset_to_freezing   ! flag to prevent very cold water
 
-   real (r8) ,dimension(196,164,60), public :: ARRAY 
+   real (r8) ,dimension(:,:,:),allocatable,save :: ARRAY 
 
-   integer :: done = 1
+   integer , save :: done = 1
 
 !EOP
 !BOC
 !-----------------------------------------------------------------------
 !
 !  ids for tavg diagnostics computed from baroclinic
-!
+
 !-----------------------------------------------------------------------
 
    integer (int_kind) :: &
@@ -423,11 +423,13 @@
 
    enddo
 
+   allocate(ARRAY(164,196,60))
+
+
 !-----------------------------------------------------------------------
 !EOC
 
  call flushm (stdout)
-
 
  end subroutine init_baroclinic
 
@@ -502,7 +504,7 @@
       i,j,                &! dummy indices for horizontal directions
       n,k,                &! dummy indices for vertical level, tracer
       iblock,             &! counter for block loops
-      kp1,km1              ! level index for k+1, k-1 levels
+      kp1,km1,kk           ! level index for k+1, k-1 levels
 
    real (r8), dimension(nx_block,ny_block) :: & 
       FX,FY,              &! sum of r.h.s. forcing terms
@@ -547,160 +549,7 @@
 !
 !-----------------------------------------------------------------------
 
- if(my_task == master_task .and. done == 1) then
-
-
-  do k=1,1
-   do iblock = 1,nblocks_clinic
-      this_block = get_block(blocks_clinic(iblock),iblock)
-
-        call merger( TRACER (:,:,k,1,curtime,iblock) , ARRAY(:,:,k) , iblock , this_block)  
- 
-   enddo
-  enddo
-
-   open(unit=21,file="/home/aketh/ocn_correctness_data/16OMP_block1.txt",status="unknown",position="append",action="write",form="formatted")
-
-
-  do k=1,1
-   do j=3,194
-     do i=3,162
-
-           write (21,*),ARRAY(i,j,k),i,j,k
-
-     enddo
-   enddo
-  enddo
-
-
-
-  do k=2,2
-   do iblock = 1,nblocks_clinic
-      this_block = get_block(blocks_clinic(iblock),iblock)
-
-        call merger( TRACER (:,:,k,1,curtime,iblock) , ARRAY(:,:,k) , iblock , this_block)
-
-   enddo
-  enddo
-
-
-  do k=2,2 
-   do j=3,194
-     do i=3,162
-
-           write (21,*),ARRAY(i,j,k),i,j,k    
-
-     enddo
-   enddo  
-  enddo
-
-  open(unit=22,file="/home/aketh/ocn_correctness_data/16OMP_block2.txt",status="unknown",position="append",action="write",form="formatted")
-
-  do k=1,2
-   do j=3,194
-     do i=3,162
-
-           write (22,*),ARRAY(i,j,k),i,j,k
-
-     enddo
-   enddo
-  enddo
-
-   close(21)
-   close(22)
-
-   done = 0
- 
-
- endif 
- !allocate(ARRAY(196,164,2))
-
-  !written = .false.
-
-  !do k=1,2,1
-
-   !do iblock = 1,nblocks_clinic
-   !   this_block = get_block(blocks_clinic(iblock),iblock)
-
-         !my_grid_blockno = iblock - 1
-
-         !print *,my_grid_blockno
-
-         !block_row = int(my_grid_blockno/4)
-
-         !block_col = mod(my_grid_blockno,4)
-
-         !i_start = block_col * (nx_block - 4) + 1 + 2
-
-         !j_start = block_row * (ny_block - 4) + 1 + 2
-
-         !print *,block_row,block_col
- 
-         !print *,i_start,j_start,iblock
-
-         !do j=this_block%jb,this_block%je
-              !i_start = block_col * (nx_block - 4) + 1 + 2
-               !do i=this_block%ib,this_block%ie
-
-                      !if(i == 3 .and. j == 23 .and. k == 1 .and. iblock == 13) print *,"Here",i_start,j_start,k,iblock
-                     
-                      !if(.not. WRITTEN(i_start,j_start,k) ) then
-
-                      !ARRAY(i_start,j_start,k)   = TRACER (i,j,k,1,curtime,iblock)
-
-                      !WRITTEN(i_start,j_start,k) = .true.
-                    
-                      !written_byi(i_start,j_start,k) = i
-
-                      !written_byj(i_start,j_start,k) = j
-
-                      !written_byk(i_start,j_start,k) = k
-
-                      !written_by_block(i_start,j_start,k) = iblock
-
-                      !else
-
-                      !print *,"error at i,j,k,iblock",i,j,k,iblock
-                      !print *,"array's i_start,j_start,k is already written by",written_byi(i_start,j_start,k),written_byj(i_start,j_start,k), &
-                      !written_byk(i_start,j_start,k),written_by_block(i_start,j_start,k)
-                           
-
-                      !endif 
-
-                      !i_start = i_start + 1
-
-
-               !end do
-               !j_start = j_start + 1
-         !end do
-   !enddo
-  !enddo
-
-
-
-   !open(unit=11,file="/home/aketh/ocn_correctness_data/16OMP_block1.txt",status="unknown",position="append",action="write",form="formatted")
-
-         !do k=1,2
-          !do j=3,194
-           !do i=3,162
-
-                  !write (11,*),ARRAY(i,j,k)    
-
-           !enddo
-          !enddo  
-         !enddo
- 
-
-   !close(11)
-
-   !deallocate(ARRAY)
-
-   !done = 0
-
-   !endif
-
-
-   !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor) SHARED(ARRAY)
+   !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor) 
 
    do iblock = 1,nblocks_clinic
       this_block = get_block(blocks_clinic(iblock),iblock)  
@@ -998,6 +847,24 @@
    !$OMP END PARALLEL DO
 
 
+      if(my_task == master_task .and. done == 1 ) then
+              open(unit=10,file="/home/aketh/ocn_correctness_data/16OMPthreads.txt",status="unknown",position="append",action="write",form="formatted")
+
+              do kk=1,km
+                 do j=3,194
+                   do i=3,162
+
+                         write(10,*),ARRAY(i,j,kk),i,j,kk
+
+                   enddo
+                  enddo
+               enddo
+
+               done = 0
+               close(10)
+
+       endif
+  
 !-----------------------------------------------------------------------
 !
 !  update tracer ghost cells here outside the block loops (it
@@ -1041,7 +908,7 @@
 !-----------------------------------------------------------------------
 
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,km1,kp1,n, &
-   !$OMP                     WUK,FX,FY,WORK1,WORK2) SHARED(ARRAY)
+   !$OMP                     WUK,FX,FY,WORK1,WORK2) 
 
    do iblock = 1,nblocks_clinic
 
@@ -1877,7 +1744,11 @@
 !
 !-----------------------------------------------------------------------
 
-
+   if(k == 1 .and. my_task == master_task .and. done == 1) then
+        call merger(TCUR(:,:,:,1) , ARRAY ,bid ,this_block)
+        !$omp barrier
+   endif
+ 
    call hdifft(k, WORKN, TMIX, UMIX, VMIX, this_block)
 
 
@@ -2177,7 +2048,7 @@
 
  !-----------INPUT VARAIBLES-----------------------------------! 
 
- real (r8), dimension(nx_block,ny_block), intent(in) :: TCUR 
+ real (r8), dimension(nx_block,ny_block,km), intent(in) :: TCUR 
 
  integer (int_kind), intent(in) :: iblock
 
@@ -2186,24 +2057,24 @@
 
  !-----------OUTPUT VARIABLES----------------------------------!
 
- real (r8), dimension(196,164), intent(out) :: ARRAY
+ real (r8), dimension(164,196,km), intent(out) :: ARRAY
 
  !local variables
 
-   integer (int_kind), save :: done = 1
+   integer (int_kind) :: k
 
    integer (int_kind) :: my_grid_blockno, block_row, &
    block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je
 
-   logical (log_kind) :: written(196,164,60)
+   logical (log_kind) :: written(164,196,60)
 
-   integer (int_kind) :: written_byi(196,164,60)
+   integer (int_kind) :: written_byi(164,196,60)
 
-   integer (int_kind) :: written_byj(196,164,60)
+   integer (int_kind) :: written_byj(164,196,60)
 
-   integer (int_kind) :: written_byk(196,164,60)
+   integer (int_kind) :: written_byk(164,196,60)
 
-   integer (int_kind) :: written_by_block(196,164,60)
+   integer (int_kind) :: written_by_block(164,196,60)
   
    integer (int_kind) :: i,j  
 
@@ -2221,11 +2092,7 @@
 
          i_end = i_start + (this_block%ie - this_block%ib) 
 
-         print *,i_end
-
          j_end = j_start + (this_block%je - this_block%jb)
-
-         print *,j_end
 
          ib = this_block%ib
  
@@ -2235,21 +2102,24 @@
 
          je = this_block%je
 
-         ARRAY(i_start:i_end,j_start:j_end) = TCUR(ib:ie,jb:je)
+        do k=1,km
+           j_start = block_row * (ny_block - 4) + 1 + 2
+            do j=this_block%jb,this_block%je
+                  i_start = block_col * (nx_block - 4) + 1 + 2
+                    do i=this_block%ib,this_block%ie
+
+                      if( i_start > 164 .or. j_start > 196 .and. iblock == 15 ) print *,"error",i_start,j_start,iblock
+
+                      ARRAY(i_start,j_start,k) = TCUR(i,j,k)
+
+                      i_start = i_start + 1
+
+
+                     end do
+                     j_start = j_start + 1
+           end do
+        enddo 
  
-         !do j=this_block%jb,this_block%je
-              !i_start = block_col * (nx_block - 4) + 1 + 2
-               !do i=this_block%ib,this_block%ie
-
-                      !ARRAY(i_start,j_start) = TCUR(i,j)
-
-                      !i_start = i_start + 1
-
-
-               !end do
-               !j_start = j_start + 1
-         !end do
-
  end subroutine merger 
 
 !***********************************************************************
