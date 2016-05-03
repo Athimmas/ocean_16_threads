@@ -82,6 +82,8 @@
       reset_to_freezing   ! flag to prevent very cold water
 
    real (r8) ,dimension(:,:,:),allocatable,save :: ARRAY 
+   real (r8) ,dimension(:,:,:,:),allocatable,save :: SPLIT_ARRAY
+
 
    integer , save :: done = 1
 
@@ -424,7 +426,7 @@
    enddo
 
    allocate(ARRAY(164,196,60))
-
+   allocate(SPLIT_ARRAY(44,52,60,16))
 
 !-----------------------------------------------------------------------
 !EOC
@@ -548,6 +550,62 @@
 !  first block loop to update tracers
 !
 !-----------------------------------------------------------------------
+
+  if (my_task == master_task .and. done == 1) then
+     !$OMP PARALLEL DO PRIVATE(iblock)
+     do iblock = 1,nblocks_clinic
+      this_block = get_block(blocks_clinic(iblock),iblock)
+       do k=1,km
+        call merger(TRACER (:,:,k,1,curtime,iblock) , ARRAY(:,:,k) , iblock ,this_block)
+       enddo
+     enddo
+
+
+   open(unit=10,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo.txt",status="unknown",position="append",action="write",form="formatted")
+   open(unit=11,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo_split.txt",status="unknown",position="append",action="write",form="formatted")
+
+   do iblock = 1,nblocks_clinic
+        do k=1,km
+         do j=1,52
+            do i=1,44
+
+                      write(10,*),TRACER (i,j,k,1,curtime,iblock),i,j,k,iblock
+
+            enddo
+         enddo
+        enddo
+   enddo    
+
+
+   do iblock = 1,nblocks_clinic
+      this_block = get_block(blocks_clinic(iblock),iblock)
+
+      do k=1,km
+         call splitter(SPLIT_ARRAY(:,:,k,iblock),ARRAY(:,:,k), iblock , this_block )
+      enddo
+
+   enddo 
+
+   do iblock = 1,nblocks_clinic
+        do k=1,km
+         do j=1,52
+           do i=1,44
+
+             write(11,*),SPLIT_ARRAY(i,j,k,iblock),i,j,k,iblock
+
+            enddo
+         enddo
+        enddo
+
+   enddo
+
+   close(10)
+   close(11)
+
+   done = 0
+
+   endif
+
 
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor) 
 
@@ -847,24 +905,6 @@
    !$OMP END PARALLEL DO
 
 
-      if(my_task == master_task .and. done == 1 ) then
-              open(unit=10,file="/home/aketh/ocn_correctness_data/16OMPthreads_halo.txt",status="unknown",position="append",action="write",form="formatted")
-
-              do kk=1,km
-                 do j=1,196
-                   do i=1,164
-
-                         write(10,*),ARRAY(i,j,kk),i,j,kk
-
-                   enddo
-                  enddo
-               enddo
-
-               done = 0
-               close(10)
-
-       endif
-  
 !-----------------------------------------------------------------------
 !
 !  update tracer ghost cells here outside the block loops (it
@@ -1744,11 +1784,6 @@
 !
 !-----------------------------------------------------------------------
 
-   if (my_task == master_task .and. done == 1) then
-        call merger(TCUR(:,:,k,1) , ARRAY(:,:,k) ,bid ,this_block)
-        !$omp barrier
-   endif
- 
    call hdifft(k, WORKN, TMIX, UMIX, VMIX, this_block)
 
 
@@ -2091,8 +2126,6 @@
 
          j_start = block_row * (ny_block - 4) + 1 + 2
 
-         print *,i_start,j_start,iblock
-
          i_end = i_start + (this_block%ie - this_block%ib) 
 
          j_end = j_start + (this_block%je - this_block%jb)
@@ -2149,6 +2182,74 @@
             end do
  
  end subroutine merger 
+
+
+
+ subroutine splitter (SPLIT_ARRAY , MERGED_ARRAY , iblock , this_block )
+
+ !-----------INPUT VARAIBLES-----------------------------------! 
+
+ real (r8), dimension(164,196), intent(in) :: MERGED_ARRAY
+
+ integer (int_kind), intent(in) :: iblock
+
+ type (block), intent(in) ::       &
+      this_block           ! block information for current block
+
+ !-----------OUTPUT VARIABLES----------------------------------!
+
+ real (r8), dimension(nx_block,ny_block), intent(out) :: SPLIT_ARRAY
+
+ !local variables
+
+   integer (int_kind) :: k
+
+   integer (int_kind) :: my_grid_blockno, block_row, &
+   block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je,i_index,j_index
+
+   !logical (log_kind) :: written(164,196,60)
+
+   !integer (int_kind) :: written_byi(164,196,60)
+
+   !integer (int_kind) :: written_byj(164,196,60)
+
+   !integer (int_kind) :: written_byk(164,196,60)
+
+   !integer (int_kind) :: written_by_block(164,196,60)
+  
+   integer (int_kind) :: i,j  
+
+ !-------------------------------------------------------------!
+
+
+         my_grid_blockno = iblock - 1
+
+         block_row = int( my_grid_blockno / 4  )
+
+         block_col = mod(my_grid_blockno,4)
+
+         i_start = block_col * (nx_block - 4) + 1
+
+         j_start = block_row * (ny_block - 4) + 1
+
+         print *,"in splitter",i_start,j_start,iblock 
+
+         j_index = j_start
+           do j=1,ny_block
+               i_index = i_start
+                 do i=1,nx_block
+
+                     SPLIT_ARRAY(i,j) = MERGED_ARRAY(i_index,j_index)
+                     i_index = i_index + 1
+
+
+                  end do
+               j_index = j_index + 1
+           end do
+
+           print *,"ended at",i_index,j_index,iblock
+ 
+ end subroutine splitter 
 
 !***********************************************************************
 
