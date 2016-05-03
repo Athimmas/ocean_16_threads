@@ -2116,7 +2116,12 @@
 
          endif
  
-   
+         if(block_col == 0 ) then
+
+         i_start = 1
+         ib = 1  
+
+         endif  
 
          do k=1,km
             j_index = j_start
