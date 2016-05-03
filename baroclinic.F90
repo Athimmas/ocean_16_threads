@@ -2121,7 +2121,15 @@
          i_start = 1
          ib = 1  
 
-         endif  
+         endif 
+
+         if(block_col == 3 ) then
+
+         i_start = i_start
+         ie = this_block%ie + 2
+
+         endif
+ 
 
          do k=1,km
             j_index = j_start
