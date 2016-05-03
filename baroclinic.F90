@@ -1744,8 +1744,8 @@
 !
 !-----------------------------------------------------------------------
 
-   if(k == 1 .and. my_task == master_task .and. done == 1) then
-        call merger(TCUR(:,:,:,1) , ARRAY ,bid ,this_block)
+   if (my_task == master_task .and. done == 1) then
+        call merger(TCUR(:,:,k,1) , ARRAY(:,:,k) ,bid ,this_block)
         !$omp barrier
    endif
  
@@ -2048,7 +2048,7 @@
 
  !-----------INPUT VARAIBLES-----------------------------------! 
 
- real (r8), dimension(nx_block,ny_block,km), intent(in) :: TCUR 
+ real (r8), dimension(nx_block,ny_block), intent(in) :: TCUR 
 
  integer (int_kind), intent(in) :: iblock
 
@@ -2057,7 +2057,7 @@
 
  !-----------OUTPUT VARIABLES----------------------------------!
 
- real (r8), dimension(164,196,km), intent(out) :: ARRAY
+ real (r8), dimension(164,196), intent(out) :: ARRAY
 
  !local variables
 
@@ -2066,17 +2066,20 @@
    integer (int_kind) :: my_grid_blockno, block_row, &
    block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je,i_index,j_index
 
-   logical (log_kind) :: written(164,196,60)
+   !logical (log_kind) :: written(164,196,60)
 
-   integer (int_kind) :: written_byi(164,196,60)
+   !integer (int_kind) :: written_byi(164,196,60)
 
-   integer (int_kind) :: written_byj(164,196,60)
+   !integer (int_kind) :: written_byj(164,196,60)
 
-   integer (int_kind) :: written_byk(164,196,60)
+   !integer (int_kind) :: written_byk(164,196,60)
 
-   integer (int_kind) :: written_by_block(164,196,60)
+   !integer (int_kind) :: written_by_block(164,196,60)
   
    integer (int_kind) :: i,j  
+
+ !-------------------------------------------------------------!
+
 
          my_grid_blockno = iblock - 1
 
@@ -2131,13 +2134,12 @@
          endif
  
 
-         do k=1,km
             j_index = j_start
              do j=jb,je
                    i_index = i_start
                      do i=ib,ie
 
-                       ARRAY(i_index,j_index,k) = TCUR(i,j,k)
+                       ARRAY(i_index,j_index) = TCUR(i,j)
 
                        i_index = i_index + 1
 
@@ -2145,7 +2147,6 @@
                       end do
                 j_index = j_index + 1
             end do
-         enddo 
  
  end subroutine merger 
 
