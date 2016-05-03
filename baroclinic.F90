@@ -848,11 +848,11 @@
 
 
       if(my_task == master_task .and. done == 1 ) then
-              open(unit=10,file="/home/aketh/ocn_correctness_data/16OMPthreads.txt",status="unknown",position="append",action="write",form="formatted")
+              open(unit=10,file="/home/aketh/ocn_correctness_data/16OMPthreads_halo.txt",status="unknown",position="append",action="write",form="formatted")
 
               do kk=1,km
-                 do j=3,194
-                   do i=3,162
+                 do j=1,196
+                   do i=1,164
 
                          write(10,*),ARRAY(i,j,kk),i,j,kk
 
@@ -2064,7 +2064,7 @@
    integer (int_kind) :: k
 
    integer (int_kind) :: my_grid_blockno, block_row, &
-   block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je
+   block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je,i_index,j_index
 
    logical (log_kind) :: written(164,196,60)
 
@@ -2102,23 +2102,37 @@
 
          je = this_block%je
 
-        do k=1,km
-           j_start = block_row * (ny_block - 4) + 1 + 2
-            do j=this_block%jb,this_block%je
-                  i_start = block_col * (nx_block - 4) + 1 + 2
-                    do i=this_block%ib,this_block%ie
+         if(block_row == 0 ) then
 
-                      if( i_start > 164 .or. j_start > 196 .and. iblock == 15 ) print *,"error",i_start,j_start,iblock
+         j_start = 1
+         jb = 1 
 
-                      ARRAY(i_start,j_start,k) = TCUR(i,j,k)
+         endif
 
-                      i_start = i_start + 1
+         if(block_row == 3 ) then
+
+         j_start = j_start
+         je = this_block%je + 2
+
+         endif
+ 
+   
+
+         do k=1,km
+            j_index = j_start
+             do j=jb,je
+                   i_index = i_start
+                     do i=ib,ie
+
+                       ARRAY(i_index,j_index,k) = TCUR(i,j,k)
+
+                       i_index = i_index + 1
 
 
-                     end do
-                     j_start = j_start + 1
-           end do
-        enddo 
+                      end do
+                j_index = j_index + 1
+            end do
+         enddo 
  
  end subroutine merger 
 
