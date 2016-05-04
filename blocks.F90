@@ -308,8 +308,6 @@ end subroutine create_blocks
 !----------------------------------------------------------------------
 
    if (block_id < 1 .or. block_id > nblocks_tot) then
-      print *,"block_id is",block_id
-      call flush(6)
       call exit_POP(sigAbort,'get_block: invalid block_id')
    endif
 
@@ -362,7 +360,6 @@ end subroutine create_blocks
 !----------------------------------------------------------------------
 
    if (block_id < 1 .or. block_id > nblocks_tot) then
-      print *,"block_id",block_id
       call exit_POP(sigAbort,'get_block_parameter: invalid block_id')
    endif
 

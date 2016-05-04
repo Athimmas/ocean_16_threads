@@ -27,31 +27,37 @@
    use domain, only: nblocks_clinic, blocks_clinic, POP_haloClinic
    use constants, only: delim_fmt, blank_fmt, p5, field_loc_center,          &
        field_type_scalar, c0, c1, c2, grav, ndelim_fmt,                      &
-       hflux_factor, salinity_factor, salt_to_ppt
+       hflux_factor, salinity_factor, salt_to_ppt,pi,radian
    use prognostic, only: TRACER, UVEL, VVEL, max_blocks_clinic, km, mixtime, &
        RHO, newtime, oldtime, curtime, PSURF, nt
    use broadcast, only: broadcast_scalar
    use communicate, only: my_task, master_task
    use grid, only: FCOR, DZU, HUR, KMU, KMT, sfc_layer_type,                 &
-       sfc_layer_varthick, partial_bottom_cells, dz, DZT, CALCT, dzw, dzr
+       sfc_layer_varthick, partial_bottom_cells, dz, DZT, CALCT, dzw,        &
+       dzr,KMTE,KMTN,dzwr,zw,DYT,DXT,HUW,HUS,TAREA_R,HTN,HTE,zt,partial_bottom_cells, &
+       FCORT,TLAT
    use advection, only: advu, advt, comp_flux_vel_ghost
    use pressure_grad, only: lpressure_avg, gradp
-   use horizontal_mix, only: hdiffu, hdifft, iso_impvmixt_tavg
+   use horizontal_mix, only: hdiffu, hdifft, iso_impvmixt_tavg , hmix_tracer_itype, &
+                             tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER, &
+                             lsubmesoscale_mixing,tavg_HDIFS,tavg_HDIFT
    use vertical_mix, only: vmix_coeffs, implicit_vertical_mix, vdiffu,       &
-       vdifft, impvmixt, impvmixu, impvmixt_correct, convad, impvmixt_tavg
-   use vmix_kpp, only: add_kpp_sources
+       vdifft, impvmixt, impvmixu, impvmixt_correct, convad, impvmixt_tavg,  &
+       vmix_itype,VDC_GM,VDC 
+   use vmix_kpp, only: add_kpp_sources,KPP_HBLT,HMXL,zgrid,linertial
    use diagnostics, only: ldiag_cfl, cfl_check, ldiag_global,                &
        DIAG_KE_ADV_2D, DIAG_KE_PRESS_2D, DIAG_KE_HMIX_2D, DIAG_KE_VMIX_2D,   &
        DIAG_TRACER_HDIFF_2D, DIAG_PE_2D, DIAG_TRACER_ADV_2D,                 &
        DIAG_TRACER_SFC_FLX, DIAG_TRACER_VDIFF_2D, DIAG_TRACER_SOURCE_2D
    use movie, only: define_movie_field, movie_requested, update_movie_field
-   use state_mod, only: state
+   use state_mod, only: state,sigo,state_coeffs,to,so
    use ice, only: liceform, ice_formation, increment_tlast_ice
    use time_management, only: mix_pass, leapfrogts, impcor, c2dtu, beta,     &
-       gamma, c2dtt
+       gamma, c2dtt,dt,dtu , nsteps_total,eod_last
    use io_types, only: nml_in, nml_filename, stdout
    use tavg, only: define_tavg_field, accumulate_tavg_field, accumulate_tavg_now, &
-       tavg_method_max, tavg_method_min
+       tavg_method_max, tavg_method_min,ltavg_on,num_avail_tavg_fields
+   use time_management, only : nsteps_run
    use forcing_fields, only: STF, SMF, lsmft_avail, SMFT, TFW
    use forcing_shf, only: SHF_QSW
    use forcing_sfwf, only: lfw_as_salt_flx
@@ -62,9 +68,20 @@
        reset_passive_tracers, tavg_passive_tracers, &
        tavg_passive_tracers_baroclinic_correct, &
        set_interior_passive_tracers_3D
+   use hmix_gm_submeso_share, only: HYX,HXY,SLX,SLY,RZ_SAVE,RX,RY,TX,TY,TZ
+   use hmix_gm, only: WTOP_ISOP,WBOT_ISOP,HYXW,HXYS,UIT,VIT,RB,RBR,BL_DEPTH,              &
+                      KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,        &
+                      kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,SLA_SAVE, &
+                      slm_r,slm_b,ah,ah_bolus,ah_bkg_bottom,ah_bkg_srfbl,BUOY_FREQ_SQ,    &
+                      SIGMA_TOPO_MASK,use_const_ah_bkg_srfbl,transition_layer_on,compute_kappa,&
+                      SF_SLX,SF_SLY,TLT 
    use exit_mod, only: sigAbort, exit_pop, flushm
    use overflows
    use overflow_type
+   use mix_submeso, only: SF_SUBM_X,SF_SUBM_Y,luse_const_horiz_len_scale,hor_length_scale, &
+                    TIME_SCALE,efficiency_factor,max_hor_grid_scale,FZTOP_SUBM
+   use omp_lib
+   use registry, only: registry_storage
 
    implicit none
    private
@@ -81,18 +98,17 @@
    logical (log_kind) :: &
       reset_to_freezing   ! flag to prevent very cold water
 
-   real (r8) ,dimension(:,:,:),allocatable,save :: ARRAY 
-   real (r8) ,dimension(:,:,:,:),allocatable,save :: SPLIT_ARRAY
+   real (r8) ,dimension(:,:,:,:),allocatable,save :: TMIX_COMB 
+   real (r8) ,dimension(:,:,:,:,:),allocatable,save :: SPLIT_ARRAY
 
-
-   integer , save :: done = 1
+   integer, save :: done = 1
 
 !EOP
 !BOC
 !-----------------------------------------------------------------------
 !
 !  ids for tavg diagnostics computed from baroclinic
-
+!
 !-----------------------------------------------------------------------
 
    integer (int_kind) :: &
@@ -141,6 +157,14 @@
       movie_UVEL,         &! movie id for U velocity
       movie_VVEL,         &! movie id for V velocity
       movie_RHO            ! movie id for in-situ density
+
+
+   integer  :: &
+      off_sig = 1       
+
+   !dir$ attributes offload:mic :: WORKN_PHI
+   real (r8), dimension(nx_block,ny_block,nt,km) :: &
+      WORKN_PHI 
 
 !EOC
 !***********************************************************************
@@ -425,13 +449,13 @@
 
    enddo
 
-   allocate(ARRAY(164,196,60))
-   allocate(SPLIT_ARRAY(44,52,60,16))
-
 !-----------------------------------------------------------------------
 !EOC
 
  call flushm (stdout)
+
+ allocate(TMIX_COMB(164,196,60,nt))
+ allocate(SPLIT_ARRAY(44,52,60,nt,16))
 
  end subroutine init_baroclinic
 
@@ -506,7 +530,7 @@
       i,j,                &! dummy indices for horizontal directions
       n,k,                &! dummy indices for vertical level, tracer
       iblock,             &! counter for block loops
-      kp1,km1,kk           ! level index for k+1, k-1 levels
+      kp1,km1              ! level index for k+1, k-1 levels
 
    real (r8), dimension(nx_block,ny_block) :: & 
       FX,FY,              &! sum of r.h.s. forcing terms
@@ -519,7 +543,6 @@
    type (block) ::        &
       this_block           ! block information for current block
 
-   
 !-----------------------------------------------------------------------
 !
 !  compute flux velocities in ghost cells
@@ -556,7 +579,9 @@
      do iblock = 1,nblocks_clinic
       this_block = get_block(blocks_clinic(iblock),iblock)
        do k=1,km
-        call merger(TRACER (:,:,k,1,curtime,iblock) , ARRAY(:,:,k) , iblock ,this_block)
+        !do n=1,nt
+           call merger(TRACER (:,:,k,1,mixtime,iblock) , TMIX_COMB(:,:,k,1) , iblock ,this_block)
+        !enddo
        enddo
      enddo
 
@@ -581,7 +606,7 @@
       this_block = get_block(blocks_clinic(iblock),iblock)
 
       do k=1,km
-         call splitter(SPLIT_ARRAY(:,:,k,iblock),ARRAY(:,:,k), iblock , this_block )
+         call splitter(SPLIT_ARRAY(:,:,k,1,iblock),TMIX_COMB(:,:,k,1), iblock,this_block )
       enddo
 
    enddo 
@@ -591,7 +616,7 @@
          do j=1,52
            do i=1,44
 
-             write(11,*),SPLIT_ARRAY(i,j,k,iblock),i,j,k,iblock
+             write(11,*),SPLIT_ARRAY(i,j,k,1,iblock),i,j,k,iblock
 
             enddo
          enddo
@@ -606,8 +631,7 @@
 
    endif
 
-
-   !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor) 
+   !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
 
    do iblock = 1,nblocks_clinic
       this_block = get_block(blocks_clinic(iblock),iblock)  
@@ -941,6 +965,7 @@
 
    endif
 
+
 !-----------------------------------------------------------------------
 !
 !  now loop over blocks to do momentum equations
@@ -948,7 +973,7 @@
 !-----------------------------------------------------------------------
 
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,km1,kp1,n, &
-   !$OMP                     WUK,FX,FY,WORK1,WORK2) 
+   !$OMP                     WUK,FX,FY,WORK1,WORK2)
 
    do iblock = 1,nblocks_clinic
 
@@ -1003,6 +1028,8 @@
                         DHU (:,:,iblock),           &
                         this_block)
 
+ 
+
 !-----------------------------------------------------------------------
 !
 !        store forces temporarily in UVEL(newtime),VVEL(newtime).
@@ -1041,6 +1068,8 @@
 
       enddo ! vertical (k) loop
 
+     !!dir$ offload_wait target(mic:1)wait(off_sig)
+         
 !-----------------------------------------------------------------------
 !
 !     normalize sums for vertical averages ([Fx],[Fy]) by dividing
@@ -1757,7 +1786,7 @@
 !-----------------------------------------------------------------------
 
    integer (int_kind) :: &
-      n,                 &! dummy tracer index
+      n,kk,              &! dummy tracer index
       bid                 ! local_block id
 
    real (r8), dimension(nx_block,ny_block,nt) :: &
@@ -1767,6 +1796,12 @@
    real (r8), dimension(nx_block,ny_block) :: &
       WORKSW
 
+  real (r8), dimension(nx_block,ny_block,nt,km) :: &
+      WORKN_PHI_TEMP 
+
+  integer , save :: itsdone=0
+
+  real (r8) start_time , end_time
 !-----------------------------------------------------------------------
 !
 !  initialize some arrays
@@ -1783,9 +1818,43 @@
 !  horizontal diffusion HDiff(T)
 !
 !-----------------------------------------------------------------------
+   
 
-   call hdifft(k, WORKN, TMIX, UMIX, VMIX, this_block)
+   if(k==1)then
+   
+   if(itsdone == 0) then   
+   !dir$ offload_transfer target(mic:1)  nocopy(SLX,SLY,SF_SUBM_X,SF_SUBM_Y,SF_SLX,SF_SLY : alloc_if(.true.) free_if(.false.)) &
+   !dir$ in(KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL: alloc_if(.true.) free_if(.false.) )  
+   itsdone = itsdone + 1
+   endif
+ 
+   !dir$ offload begin target(mic:1)in(kk,TMIX,UMIX,VMIX,this_block,hmix_tracer_itype,tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER) &
+   !dir$ in(lsubmesoscale_mixing,dt,dtu,HYX,HXY,RZ_SAVE,RX,RY,TX,TY,TZ,KMT,KMTE,KMTN,implicit_vertical_mix,vmix_itype,KPP_HBLT,HMXL) &
+   !dir$ in(VDC_GM,WTOP_ISOP,WBOT_ISOP,HYXW,HXYS,UIT,VIT,RB,RBR,BL_DEPTH) &
+   !dir$ in(kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,SLA_SAVE,nsteps_total, ah,ah_bolus, ah_bkg_bottom,ah_bkg_srfbl) &
+   !dir$ in(slm_r,slm_b,compute_kappa,BUOY_FREQ_SQ,SIGMA_TOPO_MASK,VDC,dz,dzw,dzwr,zw,dzr,DYT,DXT,HUW,HUS,TAREA_R,HTN,HTE,pi,zt) &
+   !dir$ in(luse_const_horiz_len_scale,hor_length_scale,TIME_SCALE,efficiency_factor,TLT,my_task,master_task) & 
+   !dir$ in(max_hor_grid_scale,mix_pass,grav,zgrid,DZT,partial_bottom_cells,FCORT,linertial,ldiag_cfl,radian,TLAT,eod_last) &
+   !dir$ in(ltavg_on,num_avail_tavg_fields,sigo,state_coeffs,to,so,use_const_ah_bkg_srfbl,transition_layer_on,tavg_HDIFS,tavg_HDIFT)out(WORKN_PHI) &
+   !dir$ nocopy(SLX,SLY,SF_SUBM_X,SF_SUBM_Y,KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,SF_SLX,SF_SLY : alloc_if(.false.) free_if(.false.) )
 
+   do kk=1,km
+   call hdifft(kk, WORKN_PHI(:,:,:,kk), TMIX, UMIX, VMIX, this_block)
+   enddo
+
+   !dir$ end offload
+
+   endif
+
+   WORKN = WORKN_PHI(:,:,:,k)
+
+   !if(my_task==master_task)then
+
+   !   open(unit=10,file="/home/aketh/ocn_correctness_data/changed.txt",status="unknown",position="append",action="write",form="formatted")
+   !   write(10),WORKN
+   !   close(10)
+
+   !endif
 
    FT = FT + WORKN
 
@@ -2232,8 +2301,6 @@
 
          j_start = block_row * (ny_block - 4) + 1
 
-         print *,"in splitter",i_start,j_start,iblock 
-
          j_index = j_start
            do j=1,ny_block
                i_index = i_start
@@ -2247,9 +2314,9 @@
                j_index = j_index + 1
            end do
 
-           print *,"ended at",i_index,j_index,iblock
  
  end subroutine splitter 
+
 
 !***********************************************************************
 
