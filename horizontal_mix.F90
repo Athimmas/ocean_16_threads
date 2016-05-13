@@ -573,7 +573,7 @@
          call hdifft_gm(1, HDTK_BUF(:,:,:,1), TMIX, UMIX, VMIX, tavg_HDIFE_TRACER, &
                          tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
 
-         !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(59) 
+         !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(59) 
          do kk=2,km
          call hdifft_gm(kk , HDTK_BUF(:,:,:,kk) , TMIX, UMIX,VMIX,tavg_HDIFE_TRACER, &
                                  tavg_HDIFN_TRACER,tavg_HDIFB_TRACER,this_block)
@@ -612,7 +612,7 @@
         endif
         if(k==1) then
          !start_time = omp_get_wtime()
-        !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(60) 
+        !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(60) 
         do kk=1,km
          call submeso_flux(kk, TDTK(:,:,:,kk), TMIX, tavg_HDIFE_TRACER, &
                        tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)

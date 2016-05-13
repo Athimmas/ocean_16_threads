@@ -3187,7 +3187,7 @@
 
 
    do k=1,km
-     !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(ztmp,j,i)NUM_THREADS(60)
+     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(ztmp,j,i)NUM_THREADS(60)
      do j=2,ny_block-1
        do i=2,nx_block-1
 
@@ -3204,7 +3204,7 @@
 
        enddo
      enddo
-     !$OMP END PARALLEL DO
+     !!$OMP END PARALLEL DO
    enddo
 
    if ( overwrite_hblt  .and.  .not.use_hmxl ) then

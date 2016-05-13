@@ -418,7 +418,7 @@
    BY_VERT_AVG = c0
 
 
-     !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(k,kk,temp,j,i)num_threads(60)collapse(4)
+     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(k,kk,temp,j,i)num_threads(60)collapse(4)
      do k=1,km
         do kk=1,2
            do temp=1,2
@@ -462,7 +462,7 @@
      zw_top = c0
      if ( k > 1 )  zw_top = zw(k-1)
 
-    !$OMP PARALLEL DO SHARED(CONTINUE_INTEGRAL,BX_VERT_AVG,RX,RY,ML_DEPTH)PRIVATE(i,WORK3)num_threads(60)SCHEDULE(dynamic,16)
+    !!$OMP PARALLEL DO SHARED(CONTINUE_INTEGRAL,BX_VERT_AVG,RX,RY,ML_DEPTH)PRIVATE(i,WORK3)num_threads(60)SCHEDULE(dynamic,16)
     do j=1,ny_block
         do i=1,nx_block
 
@@ -569,7 +569,7 @@
 
           
      do k=2,km
-        !$OMP PARALLEL DO SHARED(WORK3,CONTINUE_INTEGRAL,WORK2,k,bid,dzw,zt,dzwr,RZ_SAVE,ML_DEPTH)PRIVATE(i,j)DEFAULT(NONE)num_threads(60)
+        !!$OMP PARALLEL DO SHARED(WORK3,CONTINUE_INTEGRAL,WORK2,k,bid,dzw,zt,dzwr,RZ_SAVE,ML_DEPTH)PRIVATE(i,j)DEFAULT(NONE)num_threads(60)
         do j=1,ny_block
            do i=1,nx_block
 
@@ -646,8 +646,8 @@
 
      do kk=ktp,kbt
 
-       !$OMP PARALLEL DO DEFAULT(NONE)PRIVATE(i,j)SHARED(reference_depth,ML_DEPTH,KMT,WORK3,WORK2,WORK1,TIME_SCALE,HLS,SF_SUBM_X,SF_SUBM_Y) &
-       !$OMP SHARED(BX_VERT_AVG,BY_VERT_AVG,DXT,DYT,max_hor_grid_scale,efficiency_factor,kk,k,bid)num_threads(60)  
+       !!$OMP PARALLEL DO DEFAULT(NONE)PRIVATE(i,j)SHARED(reference_depth,ML_DEPTH,KMT,WORK3,WORK2,WORK1,TIME_SCALE,HLS,SF_SUBM_X,SF_SUBM_Y) &
+       !!$OMP SHARED(BX_VERT_AVG,BY_VERT_AVG,DXT,DYT,max_hor_grid_scale,efficiency_factor,kk,k,bid)num_threads(60)  
        do j=1,ny_block
            do i=1,nx_block
 
@@ -709,7 +709,7 @@
        factor = c0
      endif
 
-     !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
      do j=1,ny_block
        do i=1,nx_block
 
@@ -747,7 +747,7 @@
 
 
 
-     !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
      do j=this_block%jb,this_block%je
        do i=this_block%ib,this_block%ie
 

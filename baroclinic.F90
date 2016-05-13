@@ -574,62 +574,62 @@
 !
 !-----------------------------------------------------------------------
 
-  if (my_task == master_task .and. done == 1) then
-     !$OMP PARALLEL DO PRIVATE(iblock)
-     do iblock = 1,nblocks_clinic
-      this_block = get_block(blocks_clinic(iblock),iblock)
-       do k=1,km
+  !if (my_task == master_task .and. done == 1) then
+     !!$OMP PARALLEL DO PRIVATE(iblock)
+     !do iblock = 1,nblocks_clinic
+      !this_block = get_block(blocks_clinic(iblock),iblock)
+       !do k=1,km
         !do n=1,nt
-           call merger(TRACER (:,:,k,1,mixtime,iblock) , TMIX_COMB(:,:,k,1) , iblock ,this_block)
+           !call merger(TRACER (:,:,k,1,mixtime,iblock) , TMIX_COMB(:,:,k,1) , iblock ,this_block)
         !enddo
-       enddo
-     enddo
+       !enddo
+     !enddo
 
 
-   open(unit=10,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo.txt",status="unknown",position="append",action="write",form="formatted")
-   open(unit=11,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo_split.txt",status="unknown",position="append",action="write",form="formatted")
+   !open(unit=10,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo.txt",status="unknown",position="append",action="write",form="formatted")
+   !open(unit=11,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo_split.txt",status="unknown",position="append",action="write",form="formatted")
 
-   do iblock = 1,nblocks_clinic
-        do k=1,km
-         do j=1,52
-            do i=1,44
+   !do iblock = 1,nblocks_clinic
+        !do k=1,km
+         !do j=1,52
+            !do i=1,44
 
-                      write(10,*),TRACER (i,j,k,1,curtime,iblock),i,j,k,iblock
+            !          write(10,*),TRACER (i,j,k,1,curtime,iblock),i,j,k,iblock
 
-            enddo
-         enddo
-        enddo
-   enddo    
+            !enddo
+         !enddo
+        !enddo
+   !enddo    
 
 
-   do iblock = 1,nblocks_clinic
-      this_block = get_block(blocks_clinic(iblock),iblock)
+   !do iblock = 1,nblocks_clinic
+      !this_block = get_block(blocks_clinic(iblock),iblock)
 
-      do k=1,km
-         call splitter(SPLIT_ARRAY(:,:,k,1,iblock),TMIX_COMB(:,:,k,1), iblock,this_block )
-      enddo
+      !do k=1,km
+         !call splitter(SPLIT_ARRAY(:,:,k,1,iblock),TMIX_COMB(:,:,k,1), iblock,this_block )
+      !enddo
 
-   enddo 
+   !enddo 
 
-   do iblock = 1,nblocks_clinic
-        do k=1,km
-         do j=1,52
-           do i=1,44
+   !do iblock = 1,nblocks_clinic
+        !do k=1,km
+         !do j=1,52
+           !do i=1,44
 
-             write(11,*),SPLIT_ARRAY(i,j,k,1,iblock),i,j,k,iblock
+             !write(11,*),SPLIT_ARRAY(i,j,k,1,iblock),i,j,k,iblock
 
-            enddo
-         enddo
-        enddo
+            !enddo
+         !enddo
+        !enddo
 
-   enddo
+   !enddo
 
-   close(10)
-   close(11)
+   !close(10)
+   !close(11)
 
-   done = 0
+   !done = 0
 
-   endif
+   !endif
 
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
 
@@ -1797,7 +1797,7 @@
       WORKSW
 
   real (r8), dimension(nx_block,ny_block,nt,km) :: &
-      WORKN_PHI_TEMP 
+      WORKN_PHI_TEMP
 
   integer , save :: itsdone=0
 
@@ -1822,31 +1822,35 @@
 
    if(k==1)then
    
-   if(itsdone == 0) then   
-   !dir$ offload_transfer target(mic:1)  nocopy(SLX,SLY,SF_SUBM_X,SF_SUBM_Y,SF_SLX,SF_SLY : alloc_if(.true.) free_if(.false.)) &
-   !dir$ in(KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL: alloc_if(.true.) free_if(.false.) )  
-   itsdone = itsdone + 1
-   endif
+   !if(itsdone == 0) then   
+   !!dir$ offload_transfer target(mic:1)  nocopy( SLX,SLY,SF_SUBM_X,SF_SUBM_Y,SF_SLX,SF_SLY,TX,TY,TZ,WTOP_ISOP,WBOT_ISOP  : alloc_if(.true.) free_if(.false.)) &
+   !!dir$ nocopy( UIT,VIT,HYXW,HXYS :alloc_if(.true.) free_if(.false.) ) &
+   !!dir$ in( KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,HXY,HYX,RX,RY,RB,RBR,KMT,KMTE,KMTN,BUOY_FREQ_SQ : alloc_if(.true.) free_if(.false.)) &
+   !!dir$ in( SIGMA_TOPO_MASK,DYT,DXT,HUS,HUW,TAREA_R,HTN,HTE,TIME_SCALE,DZT : alloc_if(.true.) free_if(.false.) ) in(TLT)
+   !itsdone = itsdone + 1
+   !endif
  
-   !dir$ offload begin target(mic:1)in(kk,TMIX,UMIX,VMIX,this_block,hmix_tracer_itype,tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER) &
-   !dir$ in(lsubmesoscale_mixing,dt,dtu,HYX,HXY,RZ_SAVE,RX,RY,TX,TY,TZ,KMT,KMTE,KMTN,implicit_vertical_mix,vmix_itype,KPP_HBLT,HMXL) &
-   !dir$ in(VDC_GM,WTOP_ISOP,WBOT_ISOP,HYXW,HXYS,UIT,VIT,RB,RBR,BL_DEPTH) &
-   !dir$ in(kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,SLA_SAVE,nsteps_total, ah,ah_bolus, ah_bkg_bottom,ah_bkg_srfbl) &
-   !dir$ in(slm_r,slm_b,compute_kappa,BUOY_FREQ_SQ,SIGMA_TOPO_MASK,VDC,dz,dzw,dzwr,zw,dzr,DYT,DXT,HUW,HUS,TAREA_R,HTN,HTE,pi,zt) &
-   !dir$ in(luse_const_horiz_len_scale,hor_length_scale,TIME_SCALE,efficiency_factor,TLT,my_task,master_task) & 
-   !dir$ in(max_hor_grid_scale,mix_pass,grav,zgrid,DZT,partial_bottom_cells,FCORT,linertial,ldiag_cfl,radian,TLAT,eod_last) &
-   !dir$ in(ltavg_on,num_avail_tavg_fields,sigo,state_coeffs,to,so,use_const_ah_bkg_srfbl,transition_layer_on,tavg_HDIFS,tavg_HDIFT)out(WORKN_PHI) &
-   !dir$ nocopy(SLX,SLY,SF_SUBM_X,SF_SUBM_Y,KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,SF_SLX,SF_SLY : alloc_if(.false.) free_if(.false.) )
+   !!dir$ offload begin target(mic:1)in(kk,TMIX,UMIX,VMIX,this_block,hmix_tracer_itype,tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER) &
+   !!dir$ in(lsubmesoscale_mixing,dt,dtu,RZ_SAVE,implicit_vertical_mix,vmix_itype,KPP_HBLT,HMXL) &
+   !!dir$ in(BL_DEPTH,kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,SLA_SAVE,nsteps_total, ah,ah_bolus, ah_bkg_bottom,ah_bkg_srfbl) &
+   !!dir$ in(slm_r,slm_b,compute_kappa,dz,dzw,dzwr,zw,dzr,pi,zt) &
+   !!dir$ in(luse_const_horiz_len_scale,hor_length_scale,efficiency_factor,my_task,master_task) & 
+   !!dir$ in(max_hor_grid_scale,mix_pass,grav,zgrid,partial_bottom_cells,FCORT,linertial,ldiag_cfl,radian,TLAT,eod_last) &
+   !!dir$ in(ltavg_on,num_avail_tavg_fields,sigo,state_coeffs,to,so,use_const_ah_bkg_srfbl,transition_layer_on,tavg_HDIFS,tavg_HDIFT)out(WORKN_PHI) &
+   !!dir$ nocopy(SLX,SLY,SF_SUBM_X,SF_SUBM_Y,KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,SF_SLX,SF_SLY : alloc_if(.false.) free_if(.false.) ) &
+   !!dir$ nocopy(HYX,HXY,RX,RY,TX,TY,TZ,WTOP_ISOP,WBOT_ISOP,RB,RBR,KMT,KMTE,KMTN,SIGMA_TOPO_MASK,UIT,VIT : alloc_if(.false.) free_if(.false.) ) & 
+   !!dir$ nocopy(DYT,DXT,HYXW,HXYS,HUS,HUW,TAREA_R,HTN,HTE:alloc_if(.false.) free_if(.false.) ) & 
+   !!dir$ nocopy(TLT) inout(VDC,VDC_GM)
 
    do kk=1,km
-   call hdifft(kk, WORKN_PHI(:,:,:,kk), TMIX, UMIX, VMIX, this_block)
+   call hdifft(kk, WORKN_PHI_TEMP(:,:,:,kk), TMIX, UMIX, VMIX, this_block)
    enddo
 
-   !dir$ end offload
+   !!dir$ end offload
 
    endif
 
-   WORKN = WORKN_PHI(:,:,:,k)
+   WORKN = WORKN_PHI_TEMP(:,:,:,k)
 
    !if(my_task==master_task)then
 
