@@ -82,6 +82,27 @@
          BL_DEPTH,   &        ! boundary layer depth
          UIT, VIT             ! work arrays for isopycnal mixing velocities
 
+
+      !dir$ attributes offload:mic :: WTOP_ISOP_UNIFIED
+      !dir$ attributes offload:mic :: WBOT_ISOP_UNIFED
+      !dir$ attributes offload:mic :: HXYS_UNIFIED
+      !dir$ attributes offload:mic :: HYXW_UNIFEID
+      !dir$ attributes offload:mic :: RB_UNIFIED
+      !dir$ attributes offload:mic :: RBR_UNIFIED
+      !dir$ attributes offload:mic :: BTP_UNIFIED
+      !dir$ attributes offload:mic :: BL_DEPTH_UNIFIED
+      !dir$ attributes offload:mic :: UIT_UNIFIED
+      !dir$ attributes offload:mic :: VIT_UNIFIED   
+     real (r8), dimension(:,:), allocatable ,public :: &
+         HYXW_UNIFIED, HXYS_UNIFIED, &! west and south-shifted values of above
+         RB_UNIFIED,         &        ! Rossby radius
+         RBR_UNIFIED,        &        ! inverse of Rossby radius
+         BTP_UNIFIED,        &        ! beta plane approximation
+         BL_DEPTH_UNIFIED,   &        ! boundary layer depth
+         UIT_UNIFIED, VIT_UNIFIED     ! work arrays for isopycnal mixing velocities
+
+         real (r8), dimension(:,:), allocatable, public :: WTOP_ISOP_UNIFIED, WBOT_ISOP_UNIFIED
+
       real (r8), dimension(:,:,:), allocatable, public :: WTOP_ISOP, WBOT_ISOP !vertical component of isopycnal velocities
 
       !dir$ attributes offload:mic :: SF_SLX
@@ -828,6 +849,13 @@
              BTP (nx_block,ny_block,nblocks_clinic),    &
              BL_DEPTH(nx_block,ny_block,nblocks_clinic))
 
+    allocate (HYXW_UNIFIED(nx_block_unified,ny_block_unified),    &
+             HXYS_UNIFIED(nx_block_unified,ny_block_unified),    &
+             RBR_UNIFIED (nx_block_unified,ny_block_unified),    &
+             BTP_UNIFIED (nx_block_unified,ny_block_unified),    &
+             BL_DEPTH_UNIFIED(nx_block_unified,ny_block_unified))
+
+
     allocate (SF_SLX(nx_block,ny_block,2,2,km,nblocks_clinic),  &
              SF_SLY(nx_block,ny_block,2,2,km,nblocks_clinic))
     
@@ -1116,6 +1144,11 @@
               WBOT_ISOP(nx_block,ny_block,nblocks_clinic), &
                     UIT(nx_block,ny_block,nblocks_clinic), &
                     VIT(nx_block,ny_block,nblocks_clinic))
+
+     allocate(UIT_UNIFIED(nx_block_unified,ny_block_unified))
+     allocate(VIT_UNIFIED(nx_block_unified,ny_block_unified))
+     allocate(WTOP_ISOP_UNIFIED(nx_block_unified,ny_block_unified))
+     allocate(WBOT_ISOP_UNIFIED(nx_block_unified,ny_block_unified))
 
      WTOP_ISOP = c0
      WBOT_ISOP = c0
