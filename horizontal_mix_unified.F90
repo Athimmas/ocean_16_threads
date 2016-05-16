@@ -66,8 +66,8 @@
    !dir$ attributes offload:mic :: TX_UNIFIED
    !dir$ attributes offload:mic :: TY_UNIFIED
    !dir$ attributes offload:mic :: TZ_UNIFIED
-   !dir$ attributes offload:mic :: SLX
-   !dir$ attributes offload:mic :: SLY
+   !dir$ attributes offload:mic :: SLX_UNIFIED
+   !dir$ attributes offload:mic :: SLY_UNIFIED
    !dir$ attributes offload:mic :: RZ_SAVE
    !dir$ attributes offload:mic :: HXY
    !dir$ attributes offload:mic :: HYX 
@@ -76,7 +76,7 @@
       RX_UNIFIED,RY_UNIFIED,            &     ! Dx(rho), Dy(rho)
       TX_UNIFIED,TY_UNIFIED,TZ_UNIFIED               ! tracer differences in each direction
    real (r8), dimension(:,:,:,:,:,:), allocatable, public :: &
-      SLX, SLY                ! slope of isopycnal sfcs in x,y-direction
+      SLX_UNIFIED, SLY_UNIFIED                ! slope of isopycnal sfcs in x,y-direction
    real (r8), dimension(:,:,:,:), allocatable, public :: &
       RZ_SAVE                 ! Dz(rho)
    real (r8), dimension(:,:,:), allocatable, public :: &
@@ -107,8 +107,8 @@
 
    allocate (HXY (nx_block,ny_block,nblocks_clinic),    &
              HYX (nx_block,ny_block,nblocks_clinic))
-    allocate (SLX   (nx_block,ny_block,2,2,km,nblocks_clinic),  &
-              SLY   (nx_block,ny_block,2,2,km,nblocks_clinic))
+    allocate (SLX_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic),  &
+              SLY_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic))
    allocate (TX_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic),  &
              TY_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic),  &
              TZ_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic))
@@ -121,8 +121,8 @@
 
    HXY      = c0
    HYX      = c0
-   SLX      = c0
-   SLY      = c0
+   SLX_UNIFIED      = c0
+   SLY_UNIFIED      = c0
    TX_UNIFIED       = c0
    TY_UNIFIED       = c0
    TZ_UNIFIED       = c0
@@ -484,10 +484,10 @@
                  !if (match) then 
 
 
-                    SLX(i,j,ieast ,kbt,kk,bid) = KMASK * RX_UNIFIED(i,j,ieast ,kk,bid) / RZ(i,j)
-                    SLX(i,j,iwest ,kbt,kk,bid) = KMASK * RX_UNIFIED(i,j,iwest ,kk,bid) / RZ(i,j)
-                    SLY(i,j,jnorth,kbt,kk,bid) = KMASK * RY_UNIFIED(i,j,jnorth,kk,bid) / RZ(i,j)
-                    SLY(i,j,jsouth,kbt,kk,bid) = KMASK * RY_UNIFIED(i,j,jsouth,kk,bid) / RZ(i,j)
+                    SLX_UNIFIED(i,j,ieast ,kbt,kk,bid) = KMASK * RX_UNIFIED(i,j,ieast ,kk,bid) / RZ(i,j)
+                    SLX_UNIFIED(i,j,iwest ,kbt,kk,bid) = KMASK * RX_UNIFIED(i,j,iwest ,kk,bid) / RZ(i,j)
+                    SLY_UNIFIED(i,j,jnorth,kbt,kk,bid) = KMASK * RY_UNIFIED(i,j,jnorth,kk,bid) / RZ(i,j)
+                    SLY_UNIFIED(i,j,jsouth,kbt,kk,bid) = KMASK * RY_UNIFIED(i,j,jsouth,kk,bid) / RZ(i,j)
 
 
                  !endif
@@ -589,10 +589,10 @@
 !-----------------------------------------------------------------------
 
               if ( kk+1 <= KMT(i,j,bid) ) then
-                SLX(i,j,ieast, ktp,kk+1,bid) = RX_UNIFIED(i,j,ieast ,kk+1,bid) / RZ(i,j)
-                SLX(i,j,iwest, ktp,kk+1,bid) = RX_UNIFIED(i,j,iwest ,kk+1,bid) / RZ(i,j)
-                SLY(i,j,jnorth,ktp,kk+1,bid) = RY_UNIFIED(i,j,jnorth,kk+1,bid) / RZ(i,j)
-                SLY(i,j,jsouth,ktp,kk+1,bid) = RY_UNIFIED(i,j,jsouth,kk+1,bid) / RZ(i,j)
+                SLX_UNIFIED(i,j,ieast, ktp,kk+1,bid) = RX_UNIFIED(i,j,ieast ,kk+1,bid) / RZ(i,j)
+                SLX_UNIFIED(i,j,iwest, ktp,kk+1,bid) = RX_UNIFIED(i,j,iwest ,kk+1,bid) / RZ(i,j)
+                SLY_UNIFIED(i,j,jnorth,ktp,kk+1,bid) = RY_UNIFIED(i,j,jnorth,kk+1,bid) / RZ(i,j)
+                SLY_UNIFIED(i,j,jsouth,ktp,kk+1,bid) = RY_UNIFIED(i,j,jsouth,kk+1,bid) / RZ(i,j)
               endif
 
 
