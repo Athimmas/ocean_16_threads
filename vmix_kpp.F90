@@ -3211,6 +3211,8 @@
 
      HBLT = WORK2
 
+     start_time = omp_get_wtime()
+
      do k=1,km
        do j=2,ny_block-1
          do i=2,nx_block-1

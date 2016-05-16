@@ -21,7 +21,7 @@
    use POP_HaloMod 
 
    use kinds_mod, only: int_kind, r8, log_kind, r4, rtavg
-   use blocks, only: nx_block, ny_block, block, get_block,nx_block_unified,ny_block_unified
+   use blocks, only: nx_block, ny_block, block, get_block
 !   use distribution, only: 
    use domain_size
    use domain, only: nblocks_clinic, blocks_clinic, POP_haloClinic
@@ -73,11 +73,8 @@
                       KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,        &
                       kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,SLA_SAVE, &
                       slm_r,slm_b,ah,ah_bolus,ah_bkg_bottom,ah_bkg_srfbl,BUOY_FREQ_SQ,    &
-                      SIGMA_TOPO_MASK,BTP,use_const_ah_bkg_srfbl,transition_layer_on,compute_kappa,&
-                      SF_SLX,SF_SLY,TLT,UIT_UNIFIED,VIT_UNIFIED,RB_UNIFIED,RBR_UNIFIED,BL_DEPTH_UNIFIED,&
-                      KAPPA_ISOP_UNIFIED,KAPPA_THIC_UNIFIED,HOR_DIFF_UNIFIED,KAPPA_VERTICAL_UNIFIED, &
-                      SLA_SAVE_UNIFIED,BUOY_FREQ_SQ_UNIFIED,SIGMA_TOPO_MASK_UNIFIED,HXYS_UNIFIED,HYXW_UNIFIED, &
-                      WTOP_ISOP_UNIFIED,WBOT_ISOP_UNIFIED,BTP_UNIFIED
+                      SIGMA_TOPO_MASK,use_const_ah_bkg_srfbl,transition_layer_on,compute_kappa,&
+                      SF_SLX,SF_SLY,TLT 
    use exit_mod, only: sigAbort, exit_pop, flushm
    use overflows
    use overflow_type
@@ -101,8 +98,7 @@
    logical (log_kind) :: &
       reset_to_freezing   ! flag to prevent very cold water
 
-   real (r8) ,dimension(:,:,:,:),allocatable,save :: TMIX_UNIFIED 
-   real (r8) ,dimension(:,:,:,:),allocatable,save :: TCUR_UNIFIED
+   real (r8) ,dimension(:,:,:,:),allocatable,save :: TMIX_COMB 
    real (r8) ,dimension(:,:,:,:,:),allocatable,save :: SPLIT_ARRAY
 
    integer, save :: done = 1
@@ -458,9 +454,8 @@
 
  call flushm (stdout)
 
- allocate(TMIX_UNIFIED(nx_block_unified,ny_block_unified,60,nt))
- allocate(TCUR_UNIFIED(nx_block_unified,nx_block_unified,60,nt))
- allocate(SPLIT_ARRAY(nx_block,ny_block,60,nt,max_blocks_clinic))
+ allocate(TMIX_COMB(164,196,60,nt))
+ allocate(SPLIT_ARRAY(44,52,60,nt,16))
 
  end subroutine init_baroclinic
 
@@ -535,7 +530,7 @@
       i,j,                &! dummy indices for horizontal directions
       n,k,                &! dummy indices for vertical level, tracer
       iblock,             &! counter for block loops
-      kp1,km1,temp         ! level index for k+1, k-1 levels
+      kp1,km1              ! level index for k+1, k-1 levels
 
    real (r8), dimension(nx_block,ny_block) :: & 
       FX,FY,              &! sum of r.h.s. forcing terms
@@ -579,42 +574,16 @@
 !
 !-----------------------------------------------------------------------
 
-     !$OMP PARALLEL DO PRIVATE(iblock)
-     do iblock = 1,nblocks_clinic
-      this_block = get_block(blocks_clinic(iblock),iblock)
-       do k=1,km
-        do n=1,nt
-           call merger(TRACER (:,:,k,n,mixtime,iblock) , TMIX_UNIFIED(:,:,k,n) , iblock ,this_block)
-           call merger(TRACER (:,:,k,n,curtime,iblock) , TCUR_UNIFIED(:,:,k,n) , iblock ,this_block)
-        enddo
-       enddo
-     enddo
-
-     !$OMP PARALLEL DO PRIVATE(iblock)
-     do iblock = 1,nblocks_clinic
-         call merger( UIT (:,:,iblock) , UIT_UNIFIED(:,:,1) , iblock ,this_block)
-         call merger( VIT (:,:,iblock) , VIT_UNIFIED(:,:,1) , iblock ,this_block)
-         call merger( HXYS (:,:,iblock) , HXYS_UNIFIED(:,:,1) , iblock ,this_block) 
-         call merger( HYXW (:,:,iblock) , HYXW_UNIFIED(:,:,1) , iblock ,this_block)
-         call merger( RB (:,:,iblock) , RB_UNIFIED(:,:,1) , iblock ,this_block)
-         call merger( RBR (:,:,iblock) , RBR_UNIFIED(:,:,1) , iblock ,this_block) 
-         call merger( WTOP_ISOP (:,:,iblock) , WTOP_ISOP_UNIFIED(:,:,1) , iblock ,this_block) 
-         call merger( WBOT_ISOP (:,:,iblock) , WBOT_ISOP_UNIFIED(:,:,1) , iblock ,this_block)
-         call merger( BTP (:,:,iblock)  , BTP_UNIFIED(:,:,1)  , iblock , this_block )
-         call merger( BL_DEPTH (:,:,iblock)  , BL_DEPTH_UNIFIED(:,:,1)  , iblock , this_block )
-     enddo
-
-     !$OMP PARALLEL DO PRIVATE(iblock)
-     do iblock = 1,nblocks_clinic
-      do temp=1,2
-       do k=1,km
-         call merger( KAPPA_ISOP (:,:,temp,k,iblock) , KAPPA_ISOP_UNIFIED(:,:,temp,k,1) , iblock ,this_block)
-         call merger( KAPPA_THIC (:,:,temp,k,iblock) , KAPPA_THIC_UNIFIED(:,:,temp,k,1) , iblock ,this_block)
-         call merger( HOR_DIFF (:,:,temp,k,iblock) ,   HOR_DIFF_UNIFIED(:,:,temp,k,1) , iblock ,this_block) 
-       enddo 
-      enddo
-     enddo
-
+  !if (my_task == master_task .and. done == 1) then
+     !!$OMP PARALLEL DO PRIVATE(iblock)
+     !do iblock = 1,nblocks_clinic
+      !this_block = get_block(blocks_clinic(iblock),iblock)
+       !do k=1,km
+        !do n=1,nt
+           !call merger(TRACER (:,:,k,1,mixtime,iblock) , TMIX_COMB(:,:,k,1) , iblock ,this_block)
+        !enddo
+       !enddo
+     !enddo
 
 
    !open(unit=10,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo.txt",status="unknown",position="append",action="write",form="formatted")
@@ -637,7 +606,7 @@
       !this_block = get_block(blocks_clinic(iblock),iblock)
 
       !do k=1,km
-         !call splitter(SPLIT_ARRAY(:,:,k,1,iblock),TMIX_UNIFIED(:,:,k,1), iblock,this_block )
+         !call splitter(SPLIT_ARRAY(:,:,k,1,iblock),TMIX_COMB(:,:,k,1), iblock,this_block )
       !enddo
 
    !enddo 
@@ -1830,7 +1799,7 @@
   real (r8), dimension(nx_block,ny_block,nt,km) :: &
       WORKN_PHI_TEMP
 
-  integer , save :: itsdone = 0
+  integer , save :: itsdone=0
 
   real (r8) start_time , end_time
 !-----------------------------------------------------------------------
@@ -1857,7 +1826,7 @@
    !!dir$ offload_transfer target(mic:1)  nocopy( SLX,SLY,SF_SUBM_X,SF_SUBM_Y,SF_SLX,SF_SLY,TX,TY,TZ,WTOP_ISOP,WBOT_ISOP  : alloc_if(.true.) free_if(.false.)) &
    !!dir$ nocopy( UIT,VIT,HYXW,HXYS :alloc_if(.true.) free_if(.false.) ) &
    !!dir$ in( KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,HXY,HYX,RX,RY,RB,RBR,KMT,KMTE,KMTN,BUOY_FREQ_SQ : alloc_if(.true.) free_if(.false.)) &
-   !!dir$ in( SIGMA_TOPO_MASK,DYT,DXT,HUS,HUW,TAREA_R,HTN,HTE,TIME_SCALE,DZT,FCORT,TLAT : alloc_if(.true.) free_if(.false.) ) in(TLT)
+   !!dir$ in( SIGMA_TOPO_MASK,DYT,DXT,HUS,HUW,TAREA_R,HTN,HTE,TIME_SCALE,DZT : alloc_if(.true.) free_if(.false.) ) in(TLT)
    !itsdone = itsdone + 1
    !endif
  
@@ -1866,11 +1835,11 @@
    !!dir$ in(BL_DEPTH,kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,SLA_SAVE,nsteps_total, ah,ah_bolus, ah_bkg_bottom,ah_bkg_srfbl) &
    !!dir$ in(slm_r,slm_b,compute_kappa,dz,dzw,dzwr,zw,dzr,pi,zt) &
    !!dir$ in(luse_const_horiz_len_scale,hor_length_scale,efficiency_factor,my_task,master_task) & 
-   !!dir$ in(max_hor_grid_scale,mix_pass,grav,zgrid,partial_bottom_cells,FCORT,linertial,ldiag_cfl,radian,eod_last) &
+   !!dir$ in(max_hor_grid_scale,mix_pass,grav,zgrid,partial_bottom_cells,FCORT,linertial,ldiag_cfl,radian,TLAT,eod_last) &
    !!dir$ in(ltavg_on,num_avail_tavg_fields,sigo,state_coeffs,to,so,use_const_ah_bkg_srfbl,transition_layer_on,tavg_HDIFS,tavg_HDIFT)out(WORKN_PHI) &
    !!dir$ nocopy(SLX,SLY,SF_SUBM_X,SF_SUBM_Y,KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,SF_SLX,SF_SLY : alloc_if(.false.) free_if(.false.) ) &
    !!dir$ nocopy(HYX,HXY,RX,RY,TX,TY,TZ,WTOP_ISOP,WBOT_ISOP,RB,RBR,KMT,KMTE,KMTN,SIGMA_TOPO_MASK,UIT,VIT : alloc_if(.false.) free_if(.false.) ) & 
-   !!dir$ nocopy(DYT,DXT,HYXW,HXYS,HUS,HUW,TAREA_R,HTN,HTE,FCORT,TLAT:alloc_if(.false.) free_if(.false.) ) & 
+   !!dir$ nocopy(DYT,DXT,HYXW,HXYS,HUS,HUW,TAREA_R,HTN,HTE:alloc_if(.false.) free_if(.false.) ) & 
    !!dir$ nocopy(TLT) inout(VDC,VDC_GM)
 
    do kk=1,km

@@ -82,39 +82,12 @@
          BL_DEPTH,   &        ! boundary layer depth
          UIT, VIT             ! work arrays for isopycnal mixing velocities
 
-
-      !dir$ attributes offload:mic :: WTOP_ISOP_UNIFIED
-      !dir$ attributes offload:mic :: WBOT_ISOP_UNIFED
-      !dir$ attributes offload:mic :: HXYS_UNIFIED
-      !dir$ attributes offload:mic :: HYXW_UNIFIED
-      !dir$ attributes offload:mic :: RB_UNIFIED
-      !dir$ attributes offload:mic :: RBR_UNIFIED
-      !dir$ attributes offload:mic :: BTP_UNIFIED
-      !dir$ attributes offload:mic :: BL_DEPTH_UNIFIED
-      !dir$ attributes offload:mic :: UIT_UNIFIED
-      !dir$ attributes offload:mic :: VIT_UNIFIED   
-     real (r8), dimension(:,:,:), allocatable ,public :: &
-         HYXW_UNIFIED, HXYS_UNIFIED, &! west and south-shifted values of above
-         RB_UNIFIED,         &        ! Rossby radius
-         RBR_UNIFIED,        &        ! inverse of Rossby radius
-         BTP_UNIFIED,        &        ! beta plane approximation
-         BL_DEPTH_UNIFIED,   &        ! boundary layer depth
-         UIT_UNIFIED, VIT_UNIFIED     ! work arrays for isopycnal mixing velocities
-
-      real (r8), dimension(:,:,:), allocatable, public :: WTOP_ISOP_UNIFIED, WBOT_ISOP_UNIFIED
-
       real (r8), dimension(:,:,:), allocatable, public :: WTOP_ISOP, WBOT_ISOP !vertical component of isopycnal velocities
 
       !dir$ attributes offload:mic :: SF_SLX
       !dir$ attributes offload:mic :: SF_SLY
       real (r8), dimension(:,:,:,:,:,:), allocatable ,public :: &
          SF_SLX, SF_SLY       ! components of the merged streamfunction
-
-      !dir$ attributes offload:mic :: SF_SLX_UNIFIED
-      !dir$ attributes offload:mic :: SF_SLY_UNIFIED
-      real (r8), dimension(:,:,:,:,:,:), allocatable ,public :: &
-         SF_SLX_UNIFIED, SF_SLY_UNIFIED       ! components of the merged streamfunction
-
 
       !dir$ attributes offload:mic :: SLA_SAVE
       real (r8), dimension(:,:,:,:,:), allocatable , public :: &
@@ -182,43 +155,6 @@
       real (r8), dimension(:,:,:,:), allocatable, public :: &
          BUOY_FREQ_SQ,    & ! N^2 defined at level interfaces
          SIGMA_TOPO_MASK    ! bottom topography mask used with kappa_type_eg
-
-
-
-
-
-
-
-     !dir$ attributes offload:mic :: KAPPA_ISOP_UNIFIED 
-     !dir$ attributes offload:mic :: KAPPA_THIC_UNIFIED
-      real (r8), dimension(:,:,:,:,:), allocatable, public :: &
-       KAPPA_ISOP_UNIFIED, &      ! 3D isopycnal diffusion coefficient
-                            !  for top and bottom half of a grid cell
-       KAPPA_THIC_UNIFIED           ! 3D thickness diffusion coefficient
-                            !  for top and bottom half of a grid cell
-
-      !dir$ attributes offload:mic :: HOR_DIFF_UNIFIED
-      real (r8), dimension(:,:,:,:,:), public ,allocatable :: &
-         HOR_DIFF_UNIFIED           ! 3D horizontal diffusion coefficient
-                            !  for top and bottom half of a grid cell
-
-      !dir$ attributes offload:mic :: KAPPA_LATERAL_UNIFIED
-      real (r8), dimension(:,:,:), allocatable ,public :: &
-         KAPPA_LATERAL_UNIFIED      ! horizontal variation of KAPPA in cm^2/s
-
-      !dir$ attributes offload:mic :: KAPPA_VERTICAL 
-      real (r8), dimension(:,:,:,:), allocatable ,public :: &
-         KAPPA_VERTICAL_UNIFIED     ! vertical variation of KAPPA (unitless),
-                            !  e.g. normalized buoyancy frequency dependent 
-                            !  profiles at the tracer grid points
-                            !  ( = N^2 / N_ref^2 ) OR a time-independent
-                            !  user-specified function
-      !dir$ attributes offload:mic :: BUOY_FREQ_SQ
-      !dir$ attributes offload:mic :: SIGMA_TOPO_MASK 
-      real (r8), dimension(:,:,:,:), allocatable, public :: &
-         BUOY_FREQ_SQ_UNIFIED,    & ! N^2 defined at level interfaces
-         SIGMA_TOPO_MASK_UNIFIED    ! bottom topography mask used with kappa_type_eg
-
 
 !-----------------------------------------------------------------------
 !
@@ -892,19 +828,8 @@
              BTP (nx_block,ny_block,nblocks_clinic),    &
              BL_DEPTH(nx_block,ny_block,nblocks_clinic))
 
-    allocate (HYXW_UNIFIED(nx_block_unified,ny_block_unified,1),    &
-             HXYS_UNIFIED(nx_block_unified,ny_block_unified,1),    &
-             RBR_UNIFIED (nx_block_unified,ny_block_unified,1),    &
-             BTP_UNIFIED (nx_block_unified,ny_block_unified,1),    &
-             BL_DEPTH_UNIFIED(nx_block_unified,ny_block_unified,1))
-
-
     allocate (SF_SLX(nx_block,ny_block,2,2,km,nblocks_clinic),  &
              SF_SLY(nx_block,ny_block,2,2,km,nblocks_clinic))
-
-!    allocate (SF_SLX_UNIFIED(nx_block_unified,ny_block_unified,2,2,km),  &
-!             SF_SLY_UNIFIED(nx_block_unified,ny_block_unified,2,2,km))
-
     
     allocate (FZTOP(nx_block,ny_block,nt,nblocks_clinic))
 
@@ -918,17 +843,6 @@
              KAPPA_VERTICAL(nx_block,ny_block,km,nblocks_clinic))
 
     allocate (BUOY_FREQ_SQ(nx_block,ny_block,km,nblocks_clinic))
-
-
-    allocate (KAPPA_ISOP_UNIFIED(nx_block_unified,ny_block_unified,2,km,1),  &
-             KAPPA_THIC_UNIFIED(nx_block_unified,ny_block_unified,2,km,1),  &
-             HOR_DIFF_UNIFIED  (nx_block_unified,ny_block_unified,2,km,1))
-
-    allocate (KAPPA_LATERAL_UNIFIED (nx_block_unified,ny_block_unified,1),  &
-             KAPPA_VERTICAL_UNIFIED(nx_block_unified,ny_block_unified,km,1))
-
-    allocate (BUOY_FREQ_SQ(nx_block,ny_block,km,nblocks_clinic))
-
 
     allocate (VDC_GM(nx_block,ny_block,km,nblocks_clinic))
 
@@ -1202,11 +1116,6 @@
               WBOT_ISOP(nx_block,ny_block,nblocks_clinic), &
                     UIT(nx_block,ny_block,nblocks_clinic), &
                     VIT(nx_block,ny_block,nblocks_clinic))
-
-     allocate(UIT_UNIFIED(nx_block_unified,ny_block_unified,1))
-     allocate(VIT_UNIFIED(nx_block_unified,ny_block_unified,1))
-     allocate(WTOP_ISOP_UNIFIED(nx_block_unified,ny_block_unified,1))
-     allocate(WBOT_ISOP_UNIFIED(nx_block_unified,ny_block_unified,1))
 
      WTOP_ISOP = c0
      WBOT_ISOP = c0
