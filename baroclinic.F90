@@ -73,8 +73,11 @@
                       KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,        &
                       kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,SLA_SAVE, &
                       slm_r,slm_b,ah,ah_bolus,ah_bkg_bottom,ah_bkg_srfbl,BUOY_FREQ_SQ,    &
-                      SIGMA_TOPO_MASK,use_const_ah_bkg_srfbl,transition_layer_on,compute_kappa,&
-                      SF_SLX,SF_SLY,TLT,UIT_UNIFIED 
+                      SIGMA_TOPO_MASK,BTP,use_const_ah_bkg_srfbl,transition_layer_on,compute_kappa,&
+                      SF_SLX,SF_SLY,TLT,UIT_UNIFIED,VIT_UNIFIED,RB_UNIFIED,RBR_UNIFIED,BL_DEPTH_UNIFIED,&
+                      KAPPA_ISOP_UNIFIED,KAPPA_THIC_UNIFIED,HOR_DIFF_UNIFIED,KAPPA_VERTICAL_UNIFIED, &
+                      SLA_SAVE_UNIFIED,BUOY_FREQ_SQ_UNIFIED,SIGMA_TOPO_MASK_UNIFIED,HXYS_UNIFIED,HYXW_UNIFIED, &
+                      WTOP_ISOP_UNIFIED,WBOT_ISOP_UNIFIED,BTP_UNIFIED
    use exit_mod, only: sigAbort, exit_pop, flushm
    use overflows
    use overflow_type
@@ -532,7 +535,7 @@
       i,j,                &! dummy indices for horizontal directions
       n,k,                &! dummy indices for vertical level, tracer
       iblock,             &! counter for block loops
-      kp1,km1              ! level index for k+1, k-1 levels
+      kp1,km1,temp         ! level index for k+1, k-1 levels
 
    real (r8), dimension(nx_block,ny_block) :: & 
       FX,FY,              &! sum of r.h.s. forcing terms
@@ -589,8 +592,29 @@
 
      !$OMP PARALLEL DO PRIVATE(iblock)
      do iblock = 1,nblocks_clinic
-         call merger( UIT (:,:,iblock) , UIT_UNIFIED(:,:) , iblock ,this_block)
+         call merger( UIT (:,:,iblock) , UIT_UNIFIED(:,:,1) , iblock ,this_block)
+         call merger( VIT (:,:,iblock) , VIT_UNIFIED(:,:,1) , iblock ,this_block)
+         call merger( HXYS (:,:,iblock) , HXYS_UNIFIED(:,:,1) , iblock ,this_block) 
+         call merger( HYXW (:,:,iblock) , HYXW_UNIFIED(:,:,1) , iblock ,this_block)
+         call merger( RB (:,:,iblock) , RB_UNIFIED(:,:,1) , iblock ,this_block)
+         call merger( RBR (:,:,iblock) , RBR_UNIFIED(:,:,1) , iblock ,this_block) 
+         call merger( WTOP_ISOP (:,:,iblock) , WTOP_ISOP_UNIFIED(:,:,1) , iblock ,this_block) 
+         call merger( WBOT_ISOP (:,:,iblock) , WBOT_ISOP_UNIFIED(:,:,1) , iblock ,this_block)
+         call merger( BTP (:,:,iblock)  , BTP_UNIFIED(:,:,1)  , iblock , this_block )
+         call merger( BL_DEPTH (:,:,iblock)  , BL_DEPTH_UNIFIED(:,:,1)  , iblock , this_block )
      enddo
+
+     !$OMP PARALLEL DO PRIVATE(iblock)
+     do iblock = 1,nblocks_clinic
+      do temp=1,2
+       do k=1,km
+         call merger( KAPPA_ISOP (:,:,temp,k,iblock) , KAPPA_ISOP_UNIFIED(:,:,temp,k,1) , iblock ,this_block)
+         call merger( KAPPA_THIC (:,:,temp,k,iblock) , KAPPA_THIC_UNIFIED(:,:,temp,k,1) , iblock ,this_block)
+         call merger( HOR_DIFF (:,:,temp,k,iblock) ,   HOR_DIFF_UNIFIED(:,:,temp,k,1) , iblock ,this_block) 
+       enddo 
+      enddo
+     enddo
+
 
 
    !open(unit=10,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo.txt",status="unknown",position="append",action="write",form="formatted")
