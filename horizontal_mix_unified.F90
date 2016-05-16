@@ -45,7 +45,7 @@
    use prognostic
    use vertical_mix
    use omp_lib
-   use state_mod
+   use state_mod, only: pressz
 
    implicit none
    private
@@ -83,6 +83,47 @@
       HXY_UNIFIED,              &     ! dx/dy for y-z plane
       HYX_UNIFIED                     ! dy/dx for x-z plane
 
+
+!  !State related global variables
+
+   real (r8), dimension(km) :: &
+      tmin, tmax,        &! valid temperature range for level k
+      smin, smax,        &! valid salinity    range for level k
+      pressz_unified      ! ref pressure (bars) at each level
+
+   !*** these constants will be used to construct the numerator
+   !*** factor unit change (kg/m^3 -> g/cm^3) into numerator terms
+
+   real (r8), parameter ::                     &
+      mwjfnp0s0t0 =   9.99843699e+2_r8 * p001, &
+      mwjfnp0s0t1 =   7.35212840e+0_r8 * p001, &
+      mwjfnp0s0t2 =  -5.45928211e-2_r8 * p001, &
+      mwjfnp0s0t3 =   3.98476704e-4_r8 * p001, &
+      mwjfnp0s1t0 =   2.96938239e+0_r8 * p001, &
+      mwjfnp0s1t1 =  -7.23268813e-3_r8 * p001, &
+      mwjfnp0s2t0 =   2.12382341e-3_r8 * p001, &
+      mwjfnp1s0t0 =   1.04004591e-2_r8 * p001, &
+      mwjfnp1s0t2 =   1.03970529e-7_r8 * p001, &
+      mwjfnp1s1t0 =   5.18761880e-6_r8 * p001, &
+      mwjfnp2s0t0 =  -3.24041825e-8_r8 * p001, &
+      mwjfnp2s0t2 =  -1.23869360e-11_r8* p001
+
+   !*** these constants will be used to construct the denominator
+
+   real (kind=r8), parameter ::          &
+      mwjfdp0s0t0 =   1.0e+0_r8,         &
+      mwjfdp0s0t1 =   7.28606739e-3_r8,  &
+      mwjfdp0s0t2 =  -4.60835542e-5_r8,  &
+      mwjfdp0s0t3 =   3.68390573e-7_r8,  &
+      mwjfdp0s0t4 =   1.80809186e-10_r8, &
+      mwjfdp0s1t0 =   2.14691708e-3_r8,  &
+      mwjfdp0s1t1 =  -9.27062484e-6_r8,  &
+      mwjfdp0s1t3 =  -1.78343643e-10_r8, &
+      mwjfdp0sqt0 =   4.76534122e-6_r8,  &
+      mwjfdp0sqt2 =   1.63410736e-9_r8,  &
+      mwjfdp1s0t0 =   5.30848875e-6_r8,  &
+      mwjfdp2s0t3 =  -3.03175128e-16_r8, &
+      mwjfdp3s0t1 =  -1.27934137e-17_r8
   
 !-----------------------------------------------------------------------
 !
@@ -129,7 +170,15 @@
    RX_UNIFIED       = c0
    RY_UNIFIED       = c0
    RZ_SAVE_UNIFIED  = c0
- 
+
+!! initialization for state 
+
+   tmin =  -2.0_r8  ! limited   on the low  end
+   tmax = 999.0_r8  ! unlimited on the high end
+   smin =   0.0_r8  ! limited   on the low  end
+   smax = 0.999_r8  ! unlimited on the high end
+
+   pressz_unified = pressz
 
 !-----------------------------------------------------------------------
 !EOC
@@ -354,8 +403,8 @@
         !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)NUM_THREADS(60) 
         do kk=1,km
 
-        call state (kk, kk, TMIX(:,:,kk,1), TMIX(:,:,kk,2),  &
-                     this_block, DRHODT=DRDT(:,:,kk), DRHODS=DRDS(:,:,kk))
+        call state_unified (kk, kk, TMIX(:,:,kk,1), TMIX(:,:,kk,2),  &
+                           this_block, DRHODT=DRDT(:,:,kk), DRHODS=DRDS(:,:,kk))
 
         enddo 
 
@@ -640,6 +689,196 @@
 !-----------------------------------------------------------------------
 !
      end subroutine tracer_diffs_and_isopyc_slopes_unified
+
+
+ !dir$ attributes offload:mic :: state_unified
+ subroutine state_unified(k, kk, TEMPK, SALTK, this_block, &
+                         RHOOUT, RHOFULL, DRHODT, DRHODS)
+
+! !DESCRIPTION:
+!  Returns the density of water at level k from equation of state
+!  $\rho = \rho(d,\theta,S)$ where $d$ is depth, $\theta$ is
+!  potential temperature, and $S$ is salinity. the density can be
+!  returned as a perturbation (RHOOUT) or as the full density
+!  (RHOFULL). Note that only the polynomial EOS choice will return
+!  a perturbation density; in other cases the full density is returned
+!  regardless of which argument is requested.
+!
+!  This routine also computes derivatives of density with respect
+!  to temperature and salinity at level k from equation of state
+!  if requested (ie the optional arguments are present).
+!
+!  If $k = kk$ are equal the density for level k is returned.
+!  If $k \neq kk$ the density returned is that for a parcel
+!  adiabatically displaced from level k to level kk.
+!
+! !REVISION HISTORY:
+!  same as module
+
+! !INPUT PARAMETERS:
+
+   integer (int_kind), intent(in) :: &
+      k,                    &! depth level index
+      kk                     ! level to which water is adiabatically 
+                            ! displaced
+
+   real (r8), dimension(nx_block,ny_block), intent(in) :: & 
+      TEMPK,             &! temperature at level k
+      SALTK               ! salinity    at level k
+
+   type (block), intent(in) :: &
+      this_block          ! block information for current block
+
+! !OUTPUT PARAMETERS:
+
+   real (r8), dimension(nx_block,ny_block), optional, intent(out) :: & 
+      RHOOUT,  &! perturbation density of water
+      RHOFULL, &! full density of water
+      DRHODT,  &! derivative of density with respect to temperature
+      DRHODS    ! derivative of density with respect to salinity
+
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!  local variables:
+!
+!-----------------------------------------------------------------------
+
+   integer (int_kind) :: &
+      ib,ie,jb,je,       &! extent of physical domain
+      bid,               &! local block index
+      out_of_range        ! counter for out-of-range T,S values
+
+   real (r8), dimension(nx_block,ny_block) :: &
+      TQ,SQ,             &! adjusted T,S
+      BULK_MOD,          &! Bulk modulus
+      RHO_S,             &! density at the surface
+      DRDT0,             &! d(density)/d(temperature), for surface
+      DRDS0,             &! d(density)/d(salinity   ), for surface
+      DKDT,              &! d(bulk modulus)/d(pot. temp.)
+      DKDS,              &! d(bulk modulus)/d(salinity  )
+      SQR,DENOMK,        &! work arrays
+      WORK1, WORK2, WORK3, WORK4, T2
+
+   real (r8) :: p, p2 ! temporary pressure scalars
+
+   !*** MWJF numerator coefficients including pressure
+
+   real (r8) ::                                                        &
+      mwjfnums0t0, mwjfnums0t1, mwjfnums0t2, mwjfnums0t3,              &
+      mwjfnums1t0, mwjfnums1t1, mwjfnums2t0,                           &
+      mwjfdens0t0, mwjfdens0t1, mwjfdens0t2, mwjfdens0t3, mwjfdens0t4, &
+      mwjfdens1t0, mwjfdens1t1, mwjfdens1t3,                           &
+      mwjfdensqt0, mwjfdensqt2
+
+!-----------------------------------------------------------------------
+!
+!  first check for valid range if requested
+!
+!-----------------------------------------------------------------------
+
+   bid = this_block%local_id
+
+      TQ = TEMPK
+      SQ = SALTK
+
+      TQ = min(TEMPK,tmax(kk))
+      TQ = max(TQ,tmin(kk))
+
+      SQ = min(SALTK,smax(kk))
+      SQ = max(SQ,smin(kk))
+
+!-----------------------------------------------------------------------
+!
+!  now compute density or expansion coefficients
+!
+!-----------------------------------------------------------------------
+
+      p   = c10*pressz_unified(kk)
+
+      SQ  = c1000*SQ
+#ifdef CCSMCOUPLED
+      SQR = sqrt(SQ) 
+#else
+      SQR = sqrt(SQ)
+#endif
+
+      !***
+      !*** first calculate numerator of MWJF density [P_1(S,T,p)]
+      !***
+
+      mwjfnums0t0 = mwjfnp0s0t0 + p*(mwjfnp1s0t0 + p*mwjfnp2s0t0)
+      mwjfnums0t1 = mwjfnp0s0t1 
+      mwjfnums0t2 = mwjfnp0s0t2 + p*(mwjfnp1s0t2 + p*mwjfnp2s0t2)
+      mwjfnums0t3 = mwjfnp0s0t3
+      mwjfnums1t0 = mwjfnp0s1t0 + p*mwjfnp1s1t0
+      mwjfnums1t1 = mwjfnp0s1t1
+      mwjfnums2t0 = mwjfnp0s2t0
+
+      WORK1 = mwjfnums0t0 + TQ * (mwjfnums0t1 + TQ * (mwjfnums0t2 + &
+              mwjfnums0t3 * TQ)) + SQ * (mwjfnums1t0 +              &
+              mwjfnums1t1 * TQ + mwjfnums2t0 * SQ)
+
+      !***
+      !*** now calculate denominator of MWJF density [P_2(S,T,p)]
+      !***
+
+      mwjfdens0t0 = mwjfdp0s0t0 + p*mwjfdp1s0t0
+      mwjfdens0t1 = mwjfdp0s0t1 + p**3 * mwjfdp3s0t1
+      mwjfdens0t2 = mwjfdp0s0t2
+      mwjfdens0t3 = mwjfdp0s0t3 + p**2 * mwjfdp2s0t3
+      mwjfdens0t4 = mwjfdp0s0t4
+      mwjfdens1t0 = mwjfdp0s1t0
+      mwjfdens1t1 = mwjfdp0s1t1
+      mwjfdens1t3 = mwjfdp0s1t3
+      mwjfdensqt0 = mwjfdp0sqt0
+      mwjfdensqt2 = mwjfdp0sqt2
+
+      WORK2 = mwjfdens0t0 + TQ * (mwjfdens0t1 + TQ * (mwjfdens0t2 +    &
+           TQ * (mwjfdens0t3 + mwjfdens0t4 * TQ))) +                   &
+           SQ * (mwjfdens1t0 + TQ * (mwjfdens1t1 + TQ*TQ*mwjfdens1t3)+ &
+           SQR * (mwjfdensqt0 + TQ*TQ*mwjfdensqt2))
+
+      DENOMK = c1/WORK2
+
+      if (present(RHOOUT)) then
+         RHOOUT  = WORK1*DENOMK
+      endif
+
+      if (present(RHOFULL)) then
+         RHOFULL = WORK1*DENOMK
+      endif
+
+      if (present(DRHODT)) then
+         WORK3 = &! dP_1/dT
+                 mwjfnums0t1 + TQ * (c2*mwjfnums0t2 +    &
+                 c3*mwjfnums0t3 * TQ) + mwjfnums1t1 * SQ
+
+         WORK4 = &! dP_2/dT
+                 mwjfdens0t1 + SQ * mwjfdens1t1 +               &
+                 TQ * (c2*(mwjfdens0t2 + SQ*SQR*mwjfdensqt2) +  &
+                 TQ * (c3*(mwjfdens0t3 + SQ * mwjfdens1t3) +    &
+                 TQ *  c4*mwjfdens0t4))
+
+         DRHODT = (WORK3 - WORK1*DENOMK*WORK4)*DENOMK
+      endif
+
+      if (present(DRHODS)) then
+         WORK3 = &! dP_1/dS
+                 mwjfnums1t0 + mwjfnums1t1 * TQ + c2*mwjfnums2t0 * SQ
+
+         WORK4 = mwjfdens1t0 +   &! dP_2/dS
+                 TQ * (mwjfdens1t1 + TQ*TQ*mwjfdens1t3) +   &
+                 c1p5*SQR*(mwjfdensqt0 + TQ*TQ*mwjfdensqt2)
+
+         DRHODS = (WORK3 - WORK1*DENOMK*WORK4)*DENOMK * c1000
+      endif
+
+!-----------------------------------------------------------------------
+!EOC
+
+ end subroutine state_unified
 
  end module horizontal_mix_unified
 
