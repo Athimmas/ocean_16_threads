@@ -3,14 +3,14 @@
  module horizontal_mix_unified
 
 !BOP
-! !MODULE: horizontal_mix
+! !MODULE: horizontal_mix_unified
 !
 ! !DESCRIPTION:
 !  This module contains driver routines for managing the individual
-!  horizontal tracer and momentum mixing modules.
+!  horizontal tracer and momentum mixing modules for unified grids.
 !
 ! !REVISION HISTORY:
-!  SVN:$Id: horizontal_mix.F90 47361 2013-05-21 20:54:30Z mlevy@ucar.edu $
+!  SVN:$Id: horizontal_mix.F90 47361 2013-05-21 20:54:30Z $
 !
 ! !USES:
 
@@ -19,7 +19,8 @@
    use POP_ConstantsMod
 
    use kinds_mod
-   use blocks, only: nx_block, ny_block, block
+   use blocks, only: nx_block, ny_block, block , nx_block_unified , &
+   nx_block_unified
    use distribution, only: 
    use domain_size
    use domain, only: nblocks_clinic, distrb_clinic
@@ -50,76 +51,42 @@
 
 ! !PUBLIC MEMBER FUNCTIONS:
 
-   public :: init_horizontal_mix, &
-             hdiffu, hdifft, &
-             iso_impvmixt_tavg
+   public :: init_horizontal_mix_unified, &
+             hdifft_unified
 
 !EOP
 !BOC
 
 ! !PUBLIC VARIABLES
 
-  !dir$ attributes offload:mic :: hmix_tracer_itype
-  integer (POP_i4) , public :: hmix_tracer_itype !users choice for type of mixing
+!  !dir$ attributes offload:mic :: hmix_tracer_itype
+!  integer (POP_i4) , public :: hmix_tracer_itype !users choice for type of mixing
 
-  !dir$ attributes offload:mic :: tavg_HDIFE_TRACER
-  !dir$ attributes offload:mic :: tavg_HDIFN_TRACER
-  !dir$ attributes offload:mic :: tavg_HDIFB_TRACER
-  integer (POP_i4) ,public ,dimension(nt) :: &
-      tavg_HDIFE_TRACER,            &! tavg id for east face diffusive flux of tracer
-      tavg_HDIFN_TRACER,            &! tavg id for north face diffusive flux of tracer
-      tavg_HDIFB_TRACER              ! tavg id for bottom face diffusive flux of tracer
+!  !dir$ attributes offload:mic :: tavg_HDIFE_TRACER
+!  !dir$ attributes offload:mic :: tavg_HDIFN_TRACER
+!  !dir$ attributes offload:mic :: tavg_HDIFB_TRACER
+!  integer (POP_i4) ,public ,dimension(nt) :: &
+!      tavg_HDIFE_TRACER,            &! tavg id for east face diffusive flux of tracer
+!      tavg_HDIFN_TRACER,            &! tavg id for north face diffusive flux of tracer
+!      tavg_HDIFB_TRACER              ! tavg id for bottom face diffusive flux of tracer
 
-   !dir$ attributes offload:mic :: tavg_HDIFS
-   !dir$ attributes offload:mic :: tavg_HDIFT
-   integer (POP_i4),public ::            &
-      hmix_momentum_itype,          &! users choice for type of mixing
-      tavg_HDIFT,                   &! tavg id for horizontal diffusion
-      tavg_HDIFS                     ! tavg id for horizontal diffusion
+!   !dir$ attributes offload:mic :: tavg_HDIFS
+!   !dir$ attributes offload:mic :: tavg_HDIFT
+!   integer (POP_i4),public ::            &
+!      hmix_momentum_itype,          &! users choice for type of mixing
+!      tavg_HDIFT,                   &! tavg id for horizontal diffusion
+!      tavg_HDIFS                     ! tavg id for horizontal diffusion
 
 
-   !dir$ attributes offload:mic :: lsubmesoscale_mixing
-   logical (log_kind) ,public ::    &
-      lsubmesoscale_mixing           ! if true, submesoscale mixing is on
+!   !dir$ attributes offload:mic :: lsubmesoscale_mixing
+!   logical (log_kind) ,public ::    &
+!      lsubmesoscale_mixing           ! if true, submesoscale mixing is on
   
 !-----------------------------------------------------------------------
 !
 !  horizontal mixing choices
 !
 !-----------------------------------------------------------------------
-
-   integer (POP_i4), parameter :: &! available choices for mixing type
-      hmix_momentum_type_del2 = 1,  &
-      hmix_momentum_type_del4 = 2,  &
-      hmix_momentum_type_anis = 3,  &
-      hmix_tracer_type_del2 = 1,    &
-      hmix_tracer_type_del4 = 2,    &
-      hmix_tracer_type_gm   = 3
-
-   !integer (POP_i4) ::            &
-      !hmix_momentum_itype,          &! users choice for type of mixing
-      !tavg_HDIFT,                   &! tavg id for horizontal diffusion
-      !tavg_HDIFS                     ! tavg id for horizontal diffusion
-
-!   integer (POP_i4), dimension(nt) :: &
-!      tavg_HDIFE_TRACER,            &! tavg id for east face diffusive flux of tracer
-!      tavg_HDIFN_TRACER,            &! tavg id for north face diffusive flux of tracer
-!      tavg_HDIFB_TRACER              ! tavg id for bottom face diffusive flux of tracer
-
-!   logical (log_kind) ::            &
-!      lsubmesoscale_mixing           ! if true, submesoscale mixing is on
-
-
-!-----------------------------------------------------------------------
-!
-!  timers
-!
-!-----------------------------------------------------------------------
-
-   integer (POP_i4) :: &
-      timer_hdiffu,      &! timer for horizontal momentum mixing
-      timer_hdifft,      &! timer for horizontal tracer   mixing
-      timer_submeso       ! timer for all submeso code
 
 !EOC
 !***********************************************************************
@@ -131,295 +98,15 @@
 ! !IROUTINE: init_horizontal_mix
 ! !INTERFACE:
 
- subroutine init_horizontal_mix(errorCode)
-
-! !DESCRIPTION:
-!  Initializes choice of mixing method based on namelist input.
-!
-! !REVISION HISTORY:
-!  same as module
-!
-! !OUTPUT PARAMETERS:
-
-   integer (POP_i4), intent(out) :: &
-      errorCode             ! returned error code
-
-!EOP
-!BOC
-!-----------------------------------------------------------------------
-!
-!  local variables
-!
-!-----------------------------------------------------------------------
-
-   integer (POP_i4) :: &
-      n,        &! dummy loop index
-      nml_error  ! error flag for namelist
-
-   character (POP_charLength) ::  &! character choice for type of mixing
-      hmix_momentum_choice, &
-      hmix_tracer_choice
-
-   namelist /hmix_nml/ hmix_momentum_choice, hmix_tracer_choice,  &
-                       lsubmesoscale_mixing
-
-!-----------------------------------------------------------------------
-!
-!  read namelist input
-!
-!-----------------------------------------------------------------------
-
-   errorCode = POP_Success
-
-   hmix_momentum_choice = 'unknown_hmix_momentum_choice'
-   hmix_tracer_choice = 'unknown_hmix_tracer_choice'
-   lsubmesoscale_mixing = .false.
-
-   if (my_task == master_task) then
-      open (nml_in, file=nml_filename, status='old',iostat=nml_error)
-      if (nml_error /= 0) then
-         nml_error = -1
-      else
-         nml_error =  1
-      endif
-      do while (nml_error > 0)
-         read(nml_in, nml=hmix_nml, iostat=nml_error)
-      end do
-      if (nml_error == 0) close(nml_in)
-   endif
-
-   call broadcast_scalar(nml_error, master_task)
-   if (nml_error /= 0) then
-      call exit_POP(sigAbort,'ERROR reading hmix_nml')
-   endif
-
-   if (my_task == master_task) then
-      write(stdout,blank_fmt)
-      write(stdout,ndelim_fmt)
-      write(stdout,blank_fmt)
-      write(stdout,'(a25)') 'Horizontal mixing options'
-      write(stdout,blank_fmt)
-      write(stdout,*) ' hmix_nml namelist settings:'
-      write(stdout,blank_fmt)
-      write(stdout,hmix_nml)
-      write(stdout,blank_fmt)
-      write(stdout,delim_fmt)
-
-      select case (hmix_momentum_choice(1:4))
-      case ('del2')
-         hmix_momentum_itype = hmix_momentum_type_del2
-         write(stdout,'(a42)') &
-           'Laplacian horizontal momentum mixing used.'
-      case ('del4')
-         hmix_momentum_itype = hmix_momentum_type_del4
-         write(stdout,'(a43)') &
-           'Biharmonic horizontal momentum mixing used.'
-      case ('anis')
-         hmix_momentum_itype = hmix_momentum_type_anis
-         write(stdout,'(a44)') &
-           'Anisotropic horizontal momentum mixing used.'
-      case ('gent')
-         hmix_momentum_itype = -1000
-      case default
-         hmix_momentum_itype = -2000
-      end select
-
-      select case (hmix_tracer_choice(1:4))
-      case ('del2')
-         hmix_tracer_itype = hmix_tracer_type_del2
-         write(stdout,'(a44)') &
-           'Laplacian horizontal tracer   mixing chosen.'
-      case ('del4')
-         hmix_tracer_itype = hmix_tracer_type_del4
-         write(stdout,'(a43)') &
-           'Biharmonic horizontal tracer   mixing used.'
-      case ('gent')
-         hmix_tracer_itype = hmix_tracer_type_gm
-         write(stdout,'(a35)') &
-          'Gent-McWilliams tracer mixing used.'
-      case default
-         hmix_tracer_itype = -1000
-      end select
-
-      if ( lsubmesoscale_mixing ) then
-        write (stdout,blank_fmt)
-        write (stdout, '(a48)') &
-         'Submesoscale mixed layer parameterization is on.'
-      endif
-
-   endif
-
-   call broadcast_scalar(hmix_momentum_itype, master_task)
-   call broadcast_scalar(hmix_tracer_itype,   master_task)
-   call broadcast_scalar(lsubmesoscale_mixing,master_task)
-
-   if (hmix_momentum_itype == -1000) then
-      call exit_POP(sigAbort, &
-              'Gent-McWilliams can only be used for tracer mixing')
-   else if (hmix_momentum_itype == -2000) then
-      call exit_POP(sigAbort, &
-                    'Unknown type for horizontal momentum mixing')
-   endif
-
-   if (hmix_tracer_itype == -1000) then
-      call exit_POP(sigAbort, &
-                    'Unknown type for horizontal tracer mixing')
-   endif
-
-!-----------------------------------------------------------------------
-!
-!  calculate additional coefficients based on mixing parameterization
-!  initialize timers
-!
-!-----------------------------------------------------------------------
-
-   select case (hmix_momentum_itype)
-   case(hmix_momentum_type_del2)
-      call init_del2u(errorCode)
-
-      if (errorCode /= POP_Success) then
-         call POP_ErrorSet(errorCode, &
-            'init_hmix: error initializing del2u')
-         return
-      endif
-
-      call get_timer(timer_hdiffu,'HMIX_MOMENTUM_DEL2', &
-                                  nblocks_clinic, distrb_clinic%nprocs)
-
-   case(hmix_momentum_type_del4)
-      call init_del4u(errorCode)
-
-      if (errorCode /= POP_Success) then
-         call POP_ErrorSet(errorCode, &
-            'init_hmix: error initializing del4u')
-         return
-      endif
-
-      call get_timer(timer_hdiffu,'HMIX_MOMENTUM_DEL4', &
-                                  nblocks_clinic, distrb_clinic%nprocs)
-
-   case(hmix_momentum_type_anis)
-      call init_aniso 
-      call get_timer(timer_hdiffu,'HMIX_MOMENTUM_ANISO', &
-                                  nblocks_clinic, distrb_clinic%nprocs)
-   end select
-
-   select case (hmix_tracer_itype)
-   case(hmix_tracer_type_del2)
-      call init_del2t(errorCode)
-
-      if (errorCode /= POP_Success) then
-         call POP_ErrorSet(errorCode, &
-            'init_hmix: error initializing del2t')
-         return
-      endif
-
-      call get_timer(timer_hdifft,'HMIX_TRACER_DEL2', &
-                                  nblocks_clinic, distrb_clinic%nprocs)
-
-   case(hmix_tracer_type_del4)
-
-      call init_del4t(errorCode)
-
-      if (errorCode /= POP_Success) then
-         call POP_ErrorSet(errorCode, &
-            'init_hmix: error initializing del4t')
-         return
-      endif
-
-      call get_timer(timer_hdifft,'HMIX_TRACER_DEL4', &
-                                  nblocks_clinic, distrb_clinic%nprocs)
-
-   case(hmix_tracer_type_gm)
-      call init_meso_mixing(hmix_tracer_itype,hmix_tracer_type_gm)
-      call init_gm  ! variables used by GM parameterization
-      call get_timer(timer_hdifft,'HMIX_TRACER_GM', &
-                                  nblocks_clinic, distrb_clinic%nprocs)
+ subroutine init_horizontal_mix_unified()
 
 
-   end select
-
-!-----------------------------------------------------------------------
-!
-!  initialize submesoscale mixing
-!
-!-----------------------------------------------------------------------
-
-   if ( lsubmesoscale_mixing )  then
-        call get_timer(timer_submeso,'SUBMESO', &
-                                  nblocks_clinic, distrb_clinic%nprocs)
-   	call init_submeso
-   	if ( .not. hmix_tracer_itype == hmix_tracer_type_gm ) then
-     	 call init_meso_mixing(hmix_tracer_itype,hmix_tracer_type_gm)
-	endif
-   endif
-
-  
-!-----------------------------------------------------------------------
-!
-!  check for compatibility with topostress
-!
-!-----------------------------------------------------------------------
-
-   if (ltopostress .and. &
-       hmix_momentum_itype /= hmix_momentum_type_del2) then
-      if (my_task == master_task) write(stdout,'(a59)') &
-         'WARNING: TOPOSTRESS HAS NO EFFECT IF DEL2 MIXING NOT CHOSEN'
-   endif
-
-!-----------------------------------------------------------------------
-!
-!  define tavg field for tavg diagnostics
-!
-!-----------------------------------------------------------------------
-
-   call define_tavg_field(tavg_HDIFT,'HDIFT',2,                            &
-                    long_name='Vertically Integrated Horz Mix T tendency', &
-                          coordinates='TLONG TLAT time',                   &
-                          units='centimeter degC/s', grid_loc='2110')
-
-   call define_tavg_field(tavg_HDIFS,'HDIFS',2,                             &
-                    long_name='Vertically Integrated Horz Diff S tendency', &
-                          coordinates='TLONG TLAT time',                    &
-                          scale_factor=1000.0_rtavg,                        &
-                          units='centimeter gram/kilogram/s', grid_loc='2110')
-
-   do n = 1,nt
-      call define_tavg_field(tavg_HDIFE_TRACER(n),                        &
-                             'HDIFE_' /&
-                                       &/ trim(tracer_d(n)%short_name),3, &
-                                long_name=trim(tracer_d(n)%short_name)   /&
-                      &/ ' Horizontal Diffusive Flux in grid-x direction',&
-                                units=trim(tracer_d(n)%tend_units),       &
-                                scale_factor=tracer_d(n)%scale_factor,    &
-                                grid_loc='3211',                          &
-                                coordinates='ULONG TLAT z_t time' )
-
-      call define_tavg_field(tavg_HDIFN_TRACER(n),                        &
-                             'HDIFN_' /&
-                                       &/ trim(tracer_d(n)%short_name),3, &
-                                long_name=trim(tracer_d(n)%short_name)   /&
-                      &/ ' Horizontal Diffusive Flux in grid-y direction',&
-                                units=trim(tracer_d(n)%tend_units),       &
-                                scale_factor=tracer_d(n)%scale_factor,    &
-                                grid_loc='3121',                          &
-                                coordinates='TLONG ULAT z_t time' )
-
-      call define_tavg_field(tavg_HDIFB_TRACER(n),                        &
-                             'HDIFB_' /&
-                                       &/ trim(tracer_d(n)%short_name),3, &
-                                long_name=trim(tracer_d(n)%short_name)   /&
-                       &/ ' Horizontal Diffusive Flux across Bottom Face',&
-                                units=trim(tracer_d(n)%tend_units),       &
-                                scale_factor=tracer_d(n)%scale_factor,    &
-                                grid_loc='3113',                          &
-                                coordinates='TLONG TLAT z_w_bot time' )
-   enddo
+ print *,"Intializing unified grids" 
 
 !-----------------------------------------------------------------------
 !EOC
 
- end subroutine init_horizontal_mix
+ end subroutine init_horizontal_mix_unified
 
 !***********************************************************************
 !BOP

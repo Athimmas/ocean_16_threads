@@ -53,7 +53,11 @@
 
    integer (int_kind), parameter, public :: &! size of block domain in
       nx_block = block_size_x + 2*nghost,   &!  x,y dir including ghost
-      ny_block = block_size_y + 2*nghost     !  cells 
+      ny_block = block_size_y + 2*nghost,   & !  cells 
+      nx_block_unified = (nx_block - 4) * 4 + 4, &
+      ny_block_unified = (ny_block - 4) * 4 + 4   
+
+
 
 ! !PUBLIC DATA MEMBERS:
 
