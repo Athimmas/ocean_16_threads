@@ -35,6 +35,7 @@
    use hmix_gm, only: init_gm, hdifft_gm
    use hmix_aniso, only: init_aniso, hdiffu_aniso
    use topostress, only: ltopostress
+   use horizontal_mix, only:tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER
    use tavg, only: define_tavg_field, accumulate_tavg_field, accumulate_tavg_now, &
       tavg_in_which_stream, ltavg_on
    use timers, only: timer_start, timer_stop, get_timer
@@ -62,16 +63,16 @@
 !  !dir$ attributes offload:mic :: hmix_tracer_itype
 !  integer (POP_i4) , public :: hmix_tracer_itype !users choice for type of mixing
 
-!  !dir$ attributes offload:mic :: tavg_HDIFE_TRACER
-!  !dir$ attributes offload:mic :: tavg_HDIFN_TRACER
-!  !dir$ attributes offload:mic :: tavg_HDIFB_TRACER
-!  integer (POP_i4) ,public ,dimension(nt) :: &
-!      tavg_HDIFE_TRACER,            &! tavg id for east face diffusive flux of tracer
-!      tavg_HDIFN_TRACER,            &! tavg id for north face diffusive flux of tracer
-!      tavg_HDIFB_TRACER              ! tavg id for bottom face diffusive flux of tracer
+  !!dir$ attributes offload:mic :: tavg_HDIFE_TRACER
+  !!dir$ attributes offload:mic :: tavg_HDIFN_TRACER
+  !!dir$ attributes offload:mic :: tavg_HDIFB_TRACER
+  !integer (POP_i4) ,public ,dimension(nt) :: &
+  !    tavg_HDIFE_TRACER,            &! tavg id for east face diffusive flux of tracer
+  !    tavg_HDIFN_TRACER,            &! tavg id for north face diffusive flux of tracer
+  !    tavg_HDIFB_TRACER              ! tavg id for bottom face diffusive flux of tracer
 
-!   !dir$ attributes offload:mic :: tavg_HDIFS
-!   !dir$ attributes offload:mic :: tavg_HDIFT
+!   !!dir$ attributes offload:mic :: tavg_HDIFS
+!   !!dir$ attributes offload:mic :: tavg_HDIFT
 !   integer (POP_i4),public ::            &
 !      hmix_momentum_itype,          &! users choice for type of mixing
 !      tavg_HDIFT,                   &! tavg id for horizontal diffusion
@@ -109,71 +110,13 @@
  end subroutine init_horizontal_mix_unified
 
 !***********************************************************************
-!BOP
-! !IROUTINE: hdiffu
+
+
+! !IROUTINE: hdifft_unified
 ! !INTERFACE:
 
- subroutine hdiffu(k,HDUK,HDVK,UMIXK,VMIXK,this_block)
-
-! !DESCRIPTION:
-!  This routine returns tendencies for horizontal diffusion of
-!  momentum.  It is a driver routine which simply branches to the
-!  proper horizontal mix routine based on the user choice of mixing
-!  method.
-!
-! !REVISION HISTORY:
-!  same as module
-
-! !INPUT PARAMETERS:
-
-   integer (POP_i4), intent(in) :: k   ! depth level index
-
-   real (POP_r8), dimension(nx_block,ny_block), intent(in) :: &
-      UMIXK, VMIXK         ! U,V at level k and mix time level
-
-   type (block), intent(in) :: &
-      this_block           ! block information for this subblock
-
-! !OUTPUT PARAMETERS:
-
-   real (POP_r8), dimension(nx_block,ny_block), intent(out) :: &
-      HDUK,                   &! returned as Hdiff(U) at level k
-      HDVK                     ! returned as Hdiff(V) at level k
-
-!EOP
-!BOC
-!-----------------------------------------------------------------------
-!
-!  branch to the proper mix routine
-!
-!-----------------------------------------------------------------------
-
-   call timer_start(timer_hdiffu, block_id=this_block%local_id)
-
-   select case (hmix_momentum_itype)
-
-   case (hmix_momentum_type_del2)
-      call hdiffu_del2(k, HDUK, HDVK, UMIXK, VMIXK, this_block)
-   case (hmix_momentum_type_del4)
-      call hdiffu_del4(k, HDUK, HDVK, UMIXK, VMIXK, this_block)
-   case (hmix_momentum_type_anis)
-      call hdiffu_aniso(k, HDUK, HDVK, UMIXK, VMIXK, this_block)
-   end select
-
-   call timer_stop(timer_hdiffu, block_id=this_block%local_id)
-
-!-----------------------------------------------------------------------
-!EOC
-
- end subroutine hdiffu
-
-!***********************************************************************
-!BOP
-! !IROUTINE: hdifft
-! !INTERFACE:
-
- !dir$ attributes offload: mic :: hdifft 
- subroutine hdifft(k, HDTK, TMIX, UMIX, VMIX, this_block)
+ !dir$ attributes offload: mic :: hdifft_unified
+ subroutine hdifft_unified(k, HDTK, TMIX, UMIX, VMIX, this_block)
 
 ! !DESCRIPTION:
 !  This routine returns tendencies for horizontal diffusion of
@@ -239,14 +182,6 @@
 
    HDTK = c0
 
-   select case (hmix_tracer_itype)
-   !case (hmix_tracer_type_del2)
-      !print *,"2 is called" 
-      !call hdifft_del2(k, HDTK, TMIX, tavg_HDIFE_TRACER, tavg_HDIFN_TRACER, this_block)
-   !case (hmix_tracer_type_del4)
-      !print *,"4 is called"
-      !call hdifft_del4(k, HDTK, TMIX, tavg_HDIFE_TRACER, tavg_HDIFN_TRACER, this_block)
-   case (hmix_tracer_type_gm)
       if (k == 1) then
         !start_time = omp_get_wtime() 
         call tracer_diffs_and_isopyc_slopes(TMIX, this_block)
@@ -278,25 +213,13 @@
 
       !print *,"time at hdifft_gm is ",end_time - start_time
  
-   end select
-   
-  
-
-   if ( lsubmesoscale_mixing ) then
-        if (.not. hmix_tracer_itype == hmix_tracer_type_gm) then
-         if (k == 1) then
-          !start_time = omp_get_wtime()
-          call tracer_diffs_and_isopyc_slopes(TMIX, this_block)
-          !end_time = omp_get_wtime()
-          !print *,"time at tracer_diffs 2 is ",end_time - start_time
-         endif
-        endif
         if (k == 1) then
          !start_time = omp_get_wtime()
          call submeso_sf(TMIX, this_block)
          !end_time = omp_get_wtime()
          !print *,"time at submeso_sf is ",end_time - start_time
         endif
+
         if(k==1) then
          !start_time = omp_get_wtime()
         !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(60) 
@@ -308,91 +231,12 @@
         !print *,"time at submeso_flux is ",end_time - start_time
         endif
         HDTK=HDTK+TDTK(:,:,:,k)
-   endif
    
-  
-   
-   
-!-----------------------------------------------------------------------
-!
-!  compute tavg diagnostic if requested
-!
-!-----------------------------------------------------------------------
-
-   !if (accumulate_tavg_now(tavg_HDIFT)) then
-     !WORK = c0
-     !if (partial_bottom_cells) then
-        !where (k <= KMT(:,:,bid)) WORK = DZT(:,:,k,bid)*HDTK(:,:,1)
-     !else
-        !where (k <= KMT(:,:,bid)) WORK = dz(k)*HDTK(:,:,1)
-     !endif
-     !call accumulate_tavg_field(WORK,tavg_HDIFT,bid,k)
-   !endif
-
-   !if (accumulate_tavg_now(tavg_HDIFS)) then
-     !WORK = c0
-     !if (partial_bottom_cells) then
-        !where (k <= KMT(:,:,bid)) WORK = DZT(:,:,k,bid)*HDTK(:,:,2)
-     !else
-        !where (k <= KMT(:,:,bid)) WORK = dz(k)*HDTK(:,:,2)
-     !endif
-   !  call accumulate_tavg_field(WORK,tavg_HDIFS,bid,k)
-   !endif
 
 !-----------------------------------------------------------------------
 !EOC
 
- end subroutine hdifft
-
-!***********************************************************************
-
- subroutine iso_impvmixt_tavg(TNEW, bid)
-
-! !INPUT PARAMETERS:
-
-   real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
-      TNEW         ! on input, contains tracer to update from
-                   ! on output, contains updated tracers at new time
-
-   integer (int_kind), intent(in) :: &
-      bid          ! local block address
-
-!-----------------------------------------------------------------------
-!
-!  local variables
-!
-!-----------------------------------------------------------------------
-
-   real (r8), dimension(nx_block,ny_block) :: & 
-      WORK1, WORK2
-
-   integer (int_kind) ::  &
-      k,n                  ! dummy loop indices
-
-!-----------------------------------------------------------------------
-
-   if (hmix_tracer_itype /= hmix_tracer_type_gm) return
-
-   do n = 1,nt
-      if (accumulate_tavg_now(tavg_HDIFB_TRACER(n))) then
-         do k=1,km-1
-            WORK1 = VDC_GM(:,:,k,bid)
-            if (partial_bottom_cells) then
-               WORK2 = merge(WORK1*(TNEW(:,:,k,n) - TNEW(:,:,k+1,n))/        &
-                             (p5*(DZT(:,:,k,bid) + DZT(:,:,k+1,bid)))        &
-                             ,c0, k < KMT(:,:,bid))*dzr(k)
-            else
-               WORK2 = merge(WORK1*(TNEW(:,:,k,n) - TNEW(:,:,k+1,n))*dzwr(k) &
-                             ,c0, k < KMT(:,:,bid))*dzr(k)
-            endif
-            call accumulate_tavg_field(WORK2,tavg_HDIFB_TRACER(n),bid,k)
-         end do
-      endif
-   end do
-
- end subroutine iso_impvmixt_tavg
-
-!***********************************************************************
+ end subroutine hdifft_unified
 
  end module horizontal_mix_unified
 
