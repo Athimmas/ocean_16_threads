@@ -413,7 +413,7 @@
                               * (TMIX(i,j+1,kk,n) - TMIX(i,j,kk,n))
                 enddo
 
-                RX_UNIFIED(i,j,ieast ,kk,bid) = DRDT(i,j,kk) * TX_UNIFIEDP(i,j,kn)  &
+                RX_UNIFIED(i,j,ieast ,kk,bid) = DRDT(i,j,kk) * TXP(i,j,kn)  &
                                          + DRDS(i,j,kk) * TX_UNIFIED(i,j,kk,2,bid) 
 
                 RY_UNIFIED(i,j,jnorth,kk,bid) = DRDT(i,j,kk) * TYP(i,j,kn)  &
@@ -421,7 +421,7 @@
 
 
                  if(i >= 2) then
-                   RX_UNIFIED(i,j,iwest,kk,bid) = DRDT(i,j,kk) * TX_UNIFIEDP(i-1,j,kn)  &
+                   RX_UNIFIED(i,j,iwest,kk,bid) = DRDT(i,j,kk) * TXP(i-1,j,kn)  &
                                      + DRDS(i,j,kk) * TX_UNIFIED (i-1,j,kk,2,bid)
                  endif 
 

@@ -82,6 +82,7 @@
                     TIME_SCALE,efficiency_factor,max_hor_grid_scale,FZTOP_SUBM
    use omp_lib
    use registry, only: registry_storage
+   use horizontal_mix_unified
 
    implicit none
    private
@@ -1821,7 +1822,12 @@
    
 
    if(k==1)then
-   
+  
+   do kk=1,km
+   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk), TMIX, UMIX, VMIX, this_block)
+   enddo
+
+ 
    !if(itsdone == 0) then   
    !!dir$ offload_transfer target(mic:1)  nocopy( SLX,SLY,SF_SUBM_X,SF_SUBM_Y,SF_SLX,SF_SLY,TX,TY,TZ,WTOP_ISOP,WBOT_ISOP  : alloc_if(.true.) free_if(.false.)) &
    !!dir$ nocopy( UIT,VIT,HYXW,HXYS :alloc_if(.true.) free_if(.false.) ) &

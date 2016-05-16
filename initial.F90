@@ -47,6 +47,7 @@
    use vertical_mix, only: init_vertical_mix, vmix_itype, vmix_type_kpp
    use vmix_kpp, only: bckgrnd_vdc2, linertial
    use horizontal_mix, only: init_horizontal_mix
+   use horizontal_mix_unified, only: init_horizontal_mix_unified
    use advection, only: init_advection
    use diagnostics, only: init_diagnostics
    use state_mod, only: init_state, state, state_itype, state_type_mwjf, state_range_iopt, &
@@ -491,6 +492,8 @@
    call init_vertical_mix
 
    call init_horizontal_mix(errorCode)
+
+   call init_horizontal_mix_unified
 
    if (errorCode /= POP_Success) then
       call POP_ErrorSet(errorCode, &
