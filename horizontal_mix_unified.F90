@@ -54,7 +54,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
 
    public :: init_horizontal_mix_unified, &
-             hdifft_unified,tracer_diffs_and_isopyc_slopes
+             hdifft_unified,tracer_diffs_and_isopyc_slopes_unified
 
 !EOP
 !BOC
@@ -63,9 +63,9 @@
 
    !dir$ attributes offload:mic :: RX_UNIFIED
    !dir$ attributes offload:mic :: RY_UNIFIED
-   !dir$ attributes offload:mic :: TX
-   !dir$ attributes offload:mic :: TY
-   !dir$ attributes offload:mic :: TZ
+   !dir$ attributes offload:mic :: TX_UNIFIED
+   !dir$ attributes offload:mic :: TY_UNIFIED
+   !dir$ attributes offload:mic :: TZ_UNIFIED
    !dir$ attributes offload:mic :: SLX
    !dir$ attributes offload:mic :: SLY
    !dir$ attributes offload:mic :: RZ_SAVE
@@ -74,7 +74,7 @@
 
    real (r8), dimension(:,:,:,:,:), allocatable, public :: &
       RX_UNIFIED,RY_UNIFIED,            &     ! Dx(rho), Dy(rho)
-      TX,TY,TZ               ! tracer differences in each direction
+      TX_UNIFIED,TY_UNIFIED,TZ_UNIFIED               ! tracer differences in each direction
    real (r8), dimension(:,:,:,:,:,:), allocatable, public :: &
       SLX, SLY                ! slope of isopycnal sfcs in x,y-direction
    real (r8), dimension(:,:,:,:), allocatable, public :: &
@@ -109,9 +109,9 @@
              HYX (nx_block,ny_block,nblocks_clinic))
     allocate (SLX   (nx_block,ny_block,2,2,km,nblocks_clinic),  &
               SLY   (nx_block,ny_block,2,2,km,nblocks_clinic))
-   allocate (TX(nx_block,ny_block,km,nt,nblocks_clinic),  &
-             TY(nx_block,ny_block,km,nt,nblocks_clinic),  &
-             TZ(nx_block,ny_block,km,nt,nblocks_clinic))
+   allocate (TX_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic),  &
+             TY_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic),  &
+             TZ_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic))
 
    allocate (RX_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic),  &
              RY_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
@@ -123,9 +123,9 @@
    HYX      = c0
    SLX      = c0
    SLY      = c0
-   TX       = c0
-   TY       = c0
-   TZ       = c0
+   TX_UNIFIED       = c0
+   TY_UNIFIED       = c0
+   TZ_UNIFIED       = c0
    RX_UNIFIED       = c0
    RY_UNIFIED       = c0
    RZ_SAVE  = c0
@@ -404,30 +404,30 @@
 
                 do n=1,nt
                   if(i <= nx_block-1)&
-                  TX(i,j,kk,n,bid) = KMASKE  &
+                  TX_UNIFIED(i,j,kk,n,bid) = KMASKE  &
                               * (TMIX(i+1,j,kk,n) - TMIX(i,j,kk,n))
 
 
                    if(j <= ny_block-1)& 
-                       TY(i,j,kk,n,bid) = KMASKN  &
+                       TY_UNIFIED(i,j,kk,n,bid) = KMASKN  &
                               * (TMIX(i,j+1,kk,n) - TMIX(i,j,kk,n))
                 enddo
 
-                RX_UNIFIED(i,j,ieast ,kk,bid) = DRDT(i,j,kk) * TXP(i,j,kn)  &
-                                         + DRDS(i,j,kk) * TX(i,j,kk,2,bid) 
+                RX_UNIFIED(i,j,ieast ,kk,bid) = DRDT(i,j,kk) * TX_UNIFIEDP(i,j,kn)  &
+                                         + DRDS(i,j,kk) * TX_UNIFIED(i,j,kk,2,bid) 
 
                 RY_UNIFIED(i,j,jnorth,kk,bid) = DRDT(i,j,kk) * TYP(i,j,kn)  &
-                                         + DRDS(i,j,kk) * TY(i,j,kk,2,bid) 
+                                         + DRDS(i,j,kk) * TY_UNIFIED(i,j,kk,2,bid) 
 
 
                  if(i >= 2) then
-                   RX_UNIFIED(i,j,iwest,kk,bid) = DRDT(i,j,kk) * TXP(i-1,j,kn)  &
-                                     + DRDS(i,j,kk) * TX (i-1,j,kk,2,bid)
+                   RX_UNIFIED(i,j,iwest,kk,bid) = DRDT(i,j,kk) * TX_UNIFIEDP(i-1,j,kn)  &
+                                     + DRDS(i,j,kk) * TX_UNIFIED (i-1,j,kk,2,bid)
                  endif 
 
                   if(j >= 2)then 
                      RY_UNIFIED(i,j,jsouth,kk,bid) = DRDT(i,j,kk) * TYP(i,j-1,kn)  &
-                                      + DRDS(i,j,kk) * TY (i,j-1,kk,2,bid)
+                                      + DRDS(i,j,kk) * TY_UNIFIED (i,j-1,kk,2,bid)
                   endif 
               enddo
             enddo
@@ -469,15 +469,15 @@
 
                  TEMP(i,j,ks) = max(-c2, TMIX(i,j,kk+1,1))
               
-                 TZ(i,j,kk+1,1,bid) = TMIX(i,j,kk  ,1) - TMIX(i,j,kk+1,1)
-                 TZ(i,j,kk+1,2,bid) = TMIX(i,j,kk  ,2) - TMIX(i,j,kk+1,2) 
+                 TZ_UNIFIED(i,j,kk+1,1,bid) = TMIX(i,j,kk  ,1) - TMIX(i,j,kk+1,1)
+                 TZ_UNIFIED(i,j,kk+1,2,bid) = TMIX(i,j,kk  ,2) - TMIX(i,j,kk+1,2) 
                  TZP(i,j,ks) = TEMP(i,j,kn) - TEMP(i,j,ks)
 
 
 !     RZ = Dz(rho) = DRDT*Dz(T) + DRDS*Dz(S)
 
 
-                 RZ(i,j) = DRDT(i,j,kk) * TZP(i,j,ks) + DRDS(i,j,kk) * TZ (i,j,kk+1,2,bid) 
+                 RZ(i,j) = DRDT(i,j,kk) * TZP(i,j,ks) + DRDS(i,j,kk) * TZ_UNIFIED (i,j,kk+1,2,bid) 
                  RZ(i,j) = min(RZ(i,j),-eps2)
 
          
@@ -527,18 +527,18 @@
 
                  do n=1,nt
                   if(i <= nx_block-1)&
-                  TX(i,j,kk+1,n,bid) = KMASKE  &
+                  TX_UNIFIED(i,j,kk+1,n,bid) = KMASKE  &
                             * (TMIX(i+1,j,kk+1,n) - TMIX(i,j,kk+1,n))
 
                   if(j <= ny_block-1)&
-                  TY(i,j,kk+1,n,bid) = KMASKN  &
+                  TY_UNIFIED(i,j,kk+1,n,bid) = KMASKN  &
                             * (TMIX(i,j+1,kk+1,n) - TMIX(i,j,kk+1,n))
                  enddo
 
                  RX_UNIFIED(i,j,ieast ,kk+1,bid) = DRDT(i,j,kk+1) * TXP(i,j,ks)  &
-                                         + DRDS(i,j,kk+1) * TX(i,j,kk+1,2,bid) 
+                                         + DRDS(i,j,kk+1) * TX_UNIFIED(i,j,kk+1,2,bid) 
                  RY_UNIFIED(i,j,jnorth,kk+1,bid) = DRDT(i,j,kk+1) * TYP(i,j,ks)  &
-                                         + DRDS(i,j,kk+1) * TY(i,j,kk+1,2,bid) 
+                                         + DRDS(i,j,kk+1) * TY_UNIFIED(i,j,kk+1,2,bid) 
 
                  if(i >= 2)then
 
@@ -575,7 +575,7 @@
                  endif
 
 
-                 RZ(i,j) = DRDT(i,j,kk+1) * TZP(i,j,ks) + DRDS(i,j,kk+1) * TZ(i,j,kk+1,2,bid) 
+                 RZ(i,j) = DRDT(i,j,kk+1) * TZP(i,j,ks) + DRDS(i,j,kk+1) * TZ_UNIFIED(i,j,kk+1,2,bid) 
                  RZ_SAVE(i,j,kk+1,bid) = min(RZ(i,j),c0)
                  RZ(i,j) = min(RZ(i,j),-eps2)
 
@@ -623,7 +623,7 @@
            do kk=1,km-1
              do j=1,ny_block
                 do i=1,nx_block
-                   TZ(i,j,kk+1,n,bid) = TMIX(i,j,kk  ,n) - TMIX(i,j,kk+1,n)
+                   TZ_UNIFIED(i,j,kk+1,n,bid) = TMIX(i,j,kk  ,n) - TMIX(i,j,kk+1,n)
                 enddo
              enddo
             enddo
