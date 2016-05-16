@@ -83,7 +83,6 @@
       HXY_UNIFIED,              &     ! dx/dy for y-z plane
       HYX_UNIFIED                     ! dy/dx for x-z plane
 
-
 !  !State related global variables
 
    real (r8), dimension(km) :: &
@@ -124,12 +123,19 @@
       mwjfdp1s0t0 =   5.30848875e-6_r8,  &
       mwjfdp2s0t3 =  -3.03175128e-16_r8, &
       mwjfdp3s0t1 =  -1.27934137e-17_r8
-  
-!-----------------------------------------------------------------------
-!
-!  horizontal mixing choices
-!
-!-----------------------------------------------------------------------
+
+!GRID related variables
+
+   !dir$ attributes offload : mic :: KMT_unified
+   integer (POP_i4), dimension(nx_block,ny_block,max_blocks_clinic), &
+      public :: &
+      KMT_unified
+
+   !dir$ attributes offload : mic :: KMTN_unified
+   !dir$ attributes offload : mic :: KMTE_unified
+   integer (POP_i4), dimension(nx_block,ny_block,max_blocks_clinic), &
+      public :: &
+      KMTN_unified,KMTE_unified
 
 !EOC
 !***********************************************************************
@@ -179,6 +185,9 @@
    smax = 0.999_r8  ! unlimited on the high end
 
    pressz_unified = pressz
+   KMT_unified = KMT
+   KMTE_unified = KMTE
+   KMTN_unified = KMTN
 
 !-----------------------------------------------------------------------
 !EOC
@@ -425,12 +434,12 @@
 !
 !-----------------------------------------------------------------------
 
-                if ( kk <= KMT(i,j,bid) .and. kk <= KMTE(i,j,bid) ) then
+                if ( kk <= KMT_unified(i,j,bid) .and. kk <= KMTE_unified(i,j,bid) ) then
                   KMASKE = c1
                 else
                   KMASKE = c0
                 endif
-                if ( kk <= KMT(i,j,bid) .and. kk <= KMTN(i,j,bid) ) then
+                if ( kk <= KMT_unified(i,j,bid) .and. kk <= KMTN_unified(i,j,bid) ) then
                   KMASKN = c1
                 else
                   KMASKN = c0
@@ -498,7 +507,7 @@
             !!$OMP PRIVATE(txpim1,txim1,temp_ksjm1,kmasknjm1,typjm1,tyjm1)NUM_THREADS(60)
             do j=1,ny_block
               do i=1,nx_block
-                 KMASK = merge(c1, c0, kk < KMT(i,j,bid))
+                 KMASK = merge(c1, c0, kk < KMT_unified(i,j,bid))
 
 
 !-----------------------------------------------------------------------
@@ -547,11 +556,11 @@
 !
 !-----------------------------------------------------------------------
 
-                 KMASKE = merge(c1, c0, kk+1 <= KMT(i,j,bid) .and.  &
-                                kk+1 <= KMTE(i,j,bid))
+                 KMASKE = merge(c1, c0, kk+1 <= KMT_unified(i,j,bid) .and.  &
+                                kk+1 <= KMTE_unified(i,j,bid))
 
-                 KMASKN = merge(c1, c0, kk+1 <= KMT(i,j,bid) .and.  &
-                                kk+1 <= KMTN(i,j,bid))
+                 KMASKN = merge(c1, c0, kk+1 <= KMT_unified(i,j,bid) .and.  &
+                                kk+1 <= KMTN_unified(i,j,bid))
 
 
 
@@ -593,8 +602,8 @@
 
                  temp_ksim1 = max(-c2, TMIX(i-1,j,kk+1,1))
 
-                 kmaskeim1 = merge(c1, c0, kk+1 <= KMT(i-1,j,bid) .and.  &
-                                kk+1 <= KMTE(i-1,j,bid))
+                 kmaskeim1 = merge(c1, c0, kk+1 <= KMT_unified(i-1,j,bid) .and.  &
+                                kk+1 <= KMTE_unified(i-1,j,bid))
 
                  txpim1 = kmaskeim1 * (temp_ksi - temp_ksim1 ) 
 
@@ -610,8 +619,8 @@
 
                  temp_ksjm1 = max(-c2, TMIX(i,j-1,kk+1,1))
 
-                 kmasknjm1 = merge(c1, c0, kk+1 <= KMT(i,j-1,bid) .and.  &
-                                kk+1 <= KMTN(i,j-1,bid))
+                 kmasknjm1 = merge(c1, c0, kk+1 <= KMT_unified(i,j-1,bid) .and.  &
+                                kk+1 <= KMTN_unified(i,j-1,bid))
 
                  typjm1 = kmasknjm1 * (temp_ksj - temp_ksjm1 )
 
@@ -637,7 +646,7 @@
 !
 !-----------------------------------------------------------------------
 
-              if ( kk+1 <= KMT(i,j,bid) ) then
+              if ( kk+1 <= KMT_unified(i,j,bid) ) then
                 SLX_UNIFIED(i,j,ieast, ktp,kk+1,bid) = RX_UNIFIED(i,j,ieast ,kk+1,bid) / RZ(i,j)
                 SLX_UNIFIED(i,j,iwest, ktp,kk+1,bid) = RX_UNIFIED(i,j,iwest ,kk+1,bid) / RZ(i,j)
                 SLY_UNIFIED(i,j,jnorth,ktp,kk+1,bid) = RY_UNIFIED(i,j,jnorth,kk+1,bid) / RZ(i,j)
