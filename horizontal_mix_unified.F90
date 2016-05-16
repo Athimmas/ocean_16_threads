@@ -62,7 +62,7 @@
 ! !PUBLIC VARIABLES
 
    !dir$ attributes offload:mic :: RX_UNIFIED
-   !dir$ attributes offload:mic :: RY
+   !dir$ attributes offload:mic :: RY_UNIFIED
    !dir$ attributes offload:mic :: TX
    !dir$ attributes offload:mic :: TY
    !dir$ attributes offload:mic :: TZ
@@ -73,7 +73,7 @@
    !dir$ attributes offload:mic :: HYX 
 
    real (r8), dimension(:,:,:,:,:), allocatable, public :: &
-      RX_UNIFIED,RY,            &     ! Dx(rho), Dy(rho)
+      RX_UNIFIED,RY_UNIFIED,            &     ! Dx(rho), Dy(rho)
       TX,TY,TZ               ! tracer differences in each direction
    real (r8), dimension(:,:,:,:,:,:), allocatable, public :: &
       SLX, SLY                ! slope of isopycnal sfcs in x,y-direction
@@ -103,7 +103,33 @@
  subroutine init_horizontal_mix_unified()
 
 
- print *,"Intializing unified grids" 
+ print *,"Intializing unified grids"
+
+   allocate (HXY (nx_block,ny_block,nblocks_clinic),    &
+             HYX (nx_block,ny_block,nblocks_clinic))
+    allocate (SLX   (nx_block,ny_block,2,2,km,nblocks_clinic),  &
+              SLY   (nx_block,ny_block,2,2,km,nblocks_clinic))
+   allocate (TX(nx_block,ny_block,km,nt,nblocks_clinic),  &
+             TY(nx_block,ny_block,km,nt,nblocks_clinic),  &
+             TZ(nx_block,ny_block,km,nt,nblocks_clinic))
+
+   allocate (RX_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic),  &
+             RY_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
+
+   allocate (RZ_SAVE(nx_block,ny_block,km,nblocks_clinic))
+
+
+   HXY      = c0
+   HYX      = c0
+   SLX      = c0
+   SLY      = c0
+   TX       = c0
+   TY       = c0
+   TZ       = c0
+   RX_UNIFIED       = c0
+   RY_UNIFIED       = c0
+   RZ_SAVE  = c0
+ 
 
 !-----------------------------------------------------------------------
 !EOC
@@ -190,48 +216,48 @@
         !print *,"time at tracer_diffs 1 is ",end_time - start_time   
       endif
 
-      if (k == 1) then
+      !if (k == 1) then
          !start_time = omp_get_wtime()
 
-         call hdifft_gm(1, HDTK_BUF(:,:,:,1), TMIX, UMIX, VMIX, tavg_HDIFE_TRACER, &
-                         tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
+         !call hdifft_gm(1, HDTK_BUF(:,:,:,1), TMIX, UMIX, VMIX, tavg_HDIFE_TRACER, &
+         !                tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
 
          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(59) 
-         do kk=2,km
-         call hdifft_gm(kk , HDTK_BUF(:,:,:,kk) , TMIX, UMIX,VMIX,tavg_HDIFE_TRACER, &
-                                 tavg_HDIFN_TRACER,tavg_HDIFB_TRACER,this_block)
-         enddo
+         !do kk=2,km
+         !call hdifft_gm(kk , HDTK_BUF(:,:,:,kk) , TMIX, UMIX,VMIX,tavg_HDIFE_TRACER, &
+         !                        tavg_HDIFN_TRACER,tavg_HDIFB_TRACER,this_block)
+         !enddo
 
          !end_time = omp_get_wtime()
 
          !print *,"time at hdifft_gm combined is ",end_time - start_time 
                     
-      endif
+      !endif
 
       !start_time = omp_get_wtime()  
-      HDTK = HDTK_BUF(:,:,:,k)
+      !HDTK = HDTK_BUF(:,:,:,k)
       !end_time = omp_get_wtime()
 
       !print *,"time at hdifft_gm is ",end_time - start_time
  
-        if (k == 1) then
+        !if (k == 1) then
          !start_time = omp_get_wtime()
-         call submeso_sf(TMIX, this_block)
+         !call submeso_sf(TMIX, this_block)
          !end_time = omp_get_wtime()
          !print *,"time at submeso_sf is ",end_time - start_time
-        endif
+        !endif
 
-        if(k==1) then
+        !if(k==1) then
          !start_time = omp_get_wtime()
         !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(60) 
-        do kk=1,km
-         call submeso_flux(kk, TDTK(:,:,:,kk), TMIX, tavg_HDIFE_TRACER, &
-                       tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
-        enddo
-        end_time = omp_get_wtime()
+        !do kk=1,km
+         !call submeso_flux(kk, TDTK(:,:,:,kk), TMIX, tavg_HDIFE_TRACER, &
+         !              tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
+        !enddo
+        !end_time = omp_get_wtime()
         !print *,"time at submeso_flux is ",end_time - start_time
-        endif
-        HDTK=HDTK+TDTK(:,:,:,k)
+        !endif
+        !HDTK=HDTK+TDTK(:,:,:,k)
    
 
 !-----------------------------------------------------------------------
@@ -390,7 +416,7 @@
                 RX_UNIFIED(i,j,ieast ,kk,bid) = DRDT(i,j,kk) * TXP(i,j,kn)  &
                                          + DRDS(i,j,kk) * TX(i,j,kk,2,bid) 
 
-                RY(i,j,jnorth,kk,bid) = DRDT(i,j,kk) * TYP(i,j,kn)  &
+                RY_UNIFIED(i,j,jnorth,kk,bid) = DRDT(i,j,kk) * TYP(i,j,kn)  &
                                          + DRDS(i,j,kk) * TY(i,j,kk,2,bid) 
 
 
@@ -400,7 +426,7 @@
                  endif 
 
                   if(j >= 2)then 
-                     RY(i,j,jsouth,kk,bid) = DRDT(i,j,kk) * TYP(i,j-1,kn)  &
+                     RY_UNIFIED(i,j,jsouth,kk,bid) = DRDT(i,j,kk) * TYP(i,j-1,kn)  &
                                       + DRDS(i,j,kk) * TY (i,j-1,kk,2,bid)
                   endif 
               enddo
@@ -460,8 +486,8 @@
 
                     SLX(i,j,ieast ,kbt,kk,bid) = KMASK * RX_UNIFIED(i,j,ieast ,kk,bid) / RZ(i,j)
                     SLX(i,j,iwest ,kbt,kk,bid) = KMASK * RX_UNIFIED(i,j,iwest ,kk,bid) / RZ(i,j)
-                    SLY(i,j,jnorth,kbt,kk,bid) = KMASK * RY(i,j,jnorth,kk,bid) / RZ(i,j)
-                    SLY(i,j,jsouth,kbt,kk,bid) = KMASK * RY(i,j,jsouth,kk,bid) / RZ(i,j)
+                    SLY(i,j,jnorth,kbt,kk,bid) = KMASK * RY_UNIFIED(i,j,jnorth,kk,bid) / RZ(i,j)
+                    SLY(i,j,jsouth,kbt,kk,bid) = KMASK * RY_UNIFIED(i,j,jsouth,kk,bid) / RZ(i,j)
 
 
                  !endif
@@ -511,7 +537,7 @@
 
                  RX_UNIFIED(i,j,ieast ,kk+1,bid) = DRDT(i,j,kk+1) * TXP(i,j,ks)  &
                                          + DRDS(i,j,kk+1) * TX(i,j,kk+1,2,bid) 
-                 RY(i,j,jnorth,kk+1,bid) = DRDT(i,j,kk+1) * TYP(i,j,ks)  &
+                 RY_UNIFIED(i,j,jnorth,kk+1,bid) = DRDT(i,j,kk+1) * TYP(i,j,ks)  &
                                          + DRDS(i,j,kk+1) * TY(i,j,kk+1,2,bid) 
 
                  if(i >= 2)then
@@ -543,7 +569,7 @@
                  tyjm1 = kmasknjm1 * (TMIX(i,j,kk+1,2) - TMIX(i,j-1,kk+1,2))
 
 
-                 RY(i,j,jsouth,kk+1,bid) = DRDT(i,j,kk+1) * typjm1  &
+                 RY_UNIFIED(i,j,jsouth,kk+1,bid) = DRDT(i,j,kk+1) * typjm1  &
                                         + DRDS(i,j,kk+1) * tyjm1
 
                  endif
@@ -565,8 +591,8 @@
               if ( kk+1 <= KMT(i,j,bid) ) then
                 SLX(i,j,ieast, ktp,kk+1,bid) = RX_UNIFIED(i,j,ieast ,kk+1,bid) / RZ(i,j)
                 SLX(i,j,iwest, ktp,kk+1,bid) = RX_UNIFIED(i,j,iwest ,kk+1,bid) / RZ(i,j)
-                SLY(i,j,jnorth,ktp,kk+1,bid) = RY(i,j,jnorth,kk+1,bid) / RZ(i,j)
-                SLY(i,j,jsouth,ktp,kk+1,bid) = RY(i,j,jsouth,kk+1,bid) / RZ(i,j)
+                SLY(i,j,jnorth,ktp,kk+1,bid) = RY_UNIFIED(i,j,jnorth,kk+1,bid) / RZ(i,j)
+                SLY(i,j,jsouth,ktp,kk+1,bid) = RY_UNIFIED(i,j,jsouth,kk+1,bid) / RZ(i,j)
               endif
 
 
@@ -610,12 +636,6 @@
         !end_time = omp_get_wtime()
 
         !print *,"Time taken at second time",end_time - start_time
-
-        !if(my_task == master_task)then
-        !open(unit=10,file="/home/aketh/ocn_correctness_data/changed.txt",status="unknown",position="append",action="write",form="unformatted")
-        !write(10),SLX,SLY,RX,RY,TX,TY
-        !close(10)
-        !endif
 
 !-----------------------------------------------------------------------
 !
