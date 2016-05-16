@@ -68,9 +68,9 @@
    !dir$ attributes offload:mic :: TZ_UNIFIED
    !dir$ attributes offload:mic :: SLX_UNIFIED
    !dir$ attributes offload:mic :: SLY_UNIFIED
-   !dir$ attributes offload:mic :: RZ_SAVE
-   !dir$ attributes offload:mic :: HXY
-   !dir$ attributes offload:mic :: HYX 
+   !dir$ attributes offload:mic :: RZ_SAVE_UNIFIED
+   !dir$ attributes offload:mic :: HXY_UNIFIED
+   !dir$ attributes offload:mic :: HYX_UNIFIED 
 
    real (r8), dimension(:,:,:,:,:), allocatable, public :: &
       RX_UNIFIED,RY_UNIFIED,            &     ! Dx(rho), Dy(rho)
@@ -78,10 +78,10 @@
    real (r8), dimension(:,:,:,:,:,:), allocatable, public :: &
       SLX_UNIFIED, SLY_UNIFIED                ! slope of isopycnal sfcs in x,y-direction
    real (r8), dimension(:,:,:,:), allocatable, public :: &
-      RZ_SAVE                 ! Dz(rho)
+      RZ_SAVE_UNIFIED                 ! Dz(rho)
    real (r8), dimension(:,:,:), allocatable, public :: &
-      HXY,              &     ! dx/dy for y-z plane
-      HYX                     ! dy/dx for x-z plane
+      HXY_UNIFIED,              &     ! dx/dy for y-z plane
+      HYX_UNIFIED                     ! dy/dx for x-z plane
 
   
 !-----------------------------------------------------------------------
@@ -105,8 +105,8 @@
 
  print *,"Intializing unified grids"
 
-   allocate (HXY (nx_block,ny_block,nblocks_clinic),    &
-             HYX (nx_block,ny_block,nblocks_clinic))
+   allocate (HXY_UNIFIED (nx_block,ny_block,nblocks_clinic),    &
+             HYX_UNIFIED (nx_block,ny_block,nblocks_clinic))
     allocate (SLX_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic),  &
               SLY_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic))
    allocate (TX_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic),  &
@@ -116,11 +116,11 @@
    allocate (RX_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic),  &
              RY_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
 
-   allocate (RZ_SAVE(nx_block,ny_block,km,nblocks_clinic))
+   allocate (RZ_SAVE_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
 
 
-   HXY      = c0
-   HYX      = c0
+   HXY_UNIFIED      = c0
+   HYX_UNIFIED      = c0
    SLX_UNIFIED      = c0
    SLY_UNIFIED      = c0
    TX_UNIFIED       = c0
@@ -128,7 +128,7 @@
    TZ_UNIFIED       = c0
    RX_UNIFIED       = c0
    RY_UNIFIED       = c0
-   RZ_SAVE  = c0
+   RZ_SAVE_UNIFIED  = c0
  
 
 !-----------------------------------------------------------------------
@@ -576,7 +576,7 @@
 
 
                  RZ(i,j) = DRDT(i,j,kk+1) * TZP(i,j,ks) + DRDS(i,j,kk+1) * TZ_UNIFIED(i,j,kk+1,2,bid) 
-                 RZ_SAVE(i,j,kk+1,bid) = min(RZ(i,j),c0)
+                 RZ_SAVE_UNIFIED(i,j,kk+1,bid) = min(RZ(i,j),c0)
                  RZ(i,j) = min(RZ(i,j),-eps2)
 
 
