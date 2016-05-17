@@ -526,6 +526,7 @@
 !-----------------------------------------------------------------------
    !start_time = omp_get_wtime()
 
+
    if ( luse_const_horiz_len_scale ) then
 
     do j=1,ny_block

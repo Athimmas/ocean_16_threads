@@ -1822,7 +1822,9 @@
    
 
    if(k==1)then
-  
+
+   HMXL_unified = HMXL 
+ 
    do kk=1,km
    call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk), TMIX, UMIX, VMIX, this_block)
    enddo

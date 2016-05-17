@@ -21,15 +21,13 @@
    use kinds_mod
    use blocks, only: nx_block, ny_block, block , nx_block_unified , &
    nx_block_unified
-   use distribution, only: 
+   use distribution 
    use domain_size
    use domain, only: nblocks_clinic, distrb_clinic
-   use constants, only: c0, blank_fmt, delim_fmt, ndelim_fmt
+   use constants
    use communicate, only: my_task, master_task
    use time_management, only: km, nt, mix_pass
    use broadcast, only: broadcast_scalar
-   use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr,KMTE, KMT,&
-                   KMTN,zt,dzw,zw
    use io_types, only: nml_in, nml_filename, stdout
    use hmix_del2, only: init_del2u, init_del2t, hdiffu_del2, hdifft_del2
    use hmix_del4, only: init_del4u, init_del4t, hdiffu_del4, hdifft_del4
@@ -43,9 +41,6 @@
    use exit_mod, only: sigAbort, exit_pop, flushm
    use mix_submeso, only: init_submeso, submeso_flux, submeso_sf
    use hmix_gm_submeso_share, only: init_meso_mixing, tracer_diffs_and_isopyc_slopes
-   use prognostic
-   use vertical_mix
-   use omp_lib
    use state_mod, only: pressz
 
    implicit none
@@ -148,6 +143,12 @@
    real (POP_r8), dimension(:,:,:,:), allocatable, public :: &
       DZT_unified
 
+   !dir$ attributes offload:mic :: DXT_UNIFIED
+   !dir$ attributes offload:mic :: DYT_UNIFIED
+
+   real (POP_r8), dimension(nx_block,ny_block,max_blocks_clinic), public :: &
+      DYT_UNIFIED, DXT_UNIFIED
+
       !*** dimension(1:km)
 
    !dir$ attributes offload:mic :: dz_unified
@@ -168,6 +169,12 @@
       dzw_unified, dzwr_unified          ! midpoint of k to midpoint of k+1
                                       !   and its reciprocal
 
+   !dir$ attributes offload:mic :: HTN_UNIFIED
+   !dir$ attributes offload:mic :: HTE_UNIFIED
+   !dir$ attributes offload:mic :: TAREA_R_UNIFIED
+   real (POP_r8), dimension(nx_block,ny_block,max_blocks_clinic), public :: &
+   HTN_UNIFIED, HTE_UNIFIED,TAREA_R_UNIFIED
+
 
 !mix_submeso related variables
 
@@ -180,6 +187,33 @@
    !dir$ attributes offload:mic :: HMXL_unified
    real (r8), dimension(:,:,:), allocatable, public :: &
       HMXL_UNIFIED
+
+   !dir$ attributes offload:mic :: TIME_SCALE_UNIFIED
+   real (r8), dimension(:,:,:), allocatable, public :: &
+      TIME_SCALE_UNIFIED     ! time scale used in horizontal length scale
+                             !  calculation
+
+   !dir$ attributes offload:mic :: hor_length_scale_unified
+   !dir$ attributes offload:mic :: efficiency_factor_unified
+   real (r8),public :: &
+      efficiency_factor_unified,   &         ! 0.06 <= efficiency factor <= 0.08
+      hor_length_scale_unified               ! constant horizontal length scale used
+                                             !  if luse_const_horiz_len_scale is true.
+                                             !  if luse_const_horiz_len_scale is false,
+                                             !  then hor_length_scale is used as the 
+                                             !  lower limit.
+
+   real (r8) :: &
+      sqrt_grav_unified              ! sqrt(grav)
+
+   integer (int_kind), parameter :: &
+         ktp = 1, kbt = 2     ! refer to the top and bottom halves of a 
+                              ! grid cell, respectively
+
+  !dir$ attributes offload:mic :: max_hor_grid_scale_unified
+   real (r8), public :: &
+      max_hor_grid_scale_unified     ! maximum horizontal grid scale allowed
+
 
 !vertical mix related variables
 
@@ -196,8 +230,16 @@
 
  subroutine init_horizontal_mix_unified()
 
+ use mix_submeso, only: TIME_SCALE,efficiency_factor,hor_length_scale, &
+                        max_hor_grid_scale
+ use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr,KMTE, KMT,&
+                   KMTN,zt,dzw,zw,DXT,DYT,HTN,HTE,TAREA_R
+ use prognostic
+ use vertical_mix
+ use omp_lib
 
- print *,"Intializing unified grids"
+
+   print *,"Intializing unified grids"
 
    allocate (HXY_UNIFIED (nx_block,ny_block,nblocks_clinic),    &
              HYX_UNIFIED (nx_block,ny_block,nblocks_clinic))
@@ -252,6 +294,24 @@
    zw_unified = zw
    dzw_unified = dzw
    dzwr_unified = dzwr
+
+   DXT_UNIFIED = DXT
+   DYT_UNIFIED = DYT
+   HTE_UNIFIED = HTE
+   HTN_UNIFIED = HTN
+   TAREA_R_UNIFIED = TAREA_R
+
+
+!! initialization for mix_submeso
+
+   allocate (TIME_SCALE_UNIFIED(nx_block,ny_block,nblocks_clinic))
+
+   TIME_SCALE_UNIFIED = TIME_SCALE
+
+      efficiency_factor_unified = efficiency_factor
+      hor_length_scale_unified = hor_length_scale
+      sqrt_grav_unified = sqrt(grav)
+      max_hor_grid_scale_unified = max_hor_grid_scale
 
 !-----------------------------------------------------------------------
 !EOC
@@ -1062,7 +1122,7 @@
    do j=1,ny_block
       do i=1,nx_block
           CONTINUE_INTEGRAL(i,j) = .true.
-          if( KMT(i,j,bid) == 0 ) then
+          if( KMT_UNIFIED(i,j,bid) == 0 ) then
            CONTINUE_INTEGRAL(i,j) = .false.
           endif
       enddo
@@ -1080,7 +1140,7 @@
      zw_top = c0
      if ( k > 1 )  zw_top = zw_unified(k-1)
 
-    !!$OMP PARALLEL DO SHARED(CONTINUE_INTEGRAL,BX_VERT_AVG,RX,RY,ML_DEPTH)PRIVATE(i,WORK3)num_threads(60)SCHEDULE(dynamic,16)
+    !!$OMP PARALLEL DO SHARED(CONTINUE_INTEGRAL,BX_VERT_AVG,RX_UNIFIED,RY_UNIFIED,ML_DEPTH)PRIVATE(i,WORK3)num_threads(60)SCHEDULE(dynamic,16)
     do j=1,ny_block
         do i=1,nx_block
 
@@ -1125,7 +1185,7 @@
     do j=1,ny_block
         do i=1,nx_block
 
-           if ( KMT(i,j,bid) > 0 ) then
+           if ( KMT_UNIFIED(i,j,bid) > 0 ) then
            BX_VERT_AVG(i,j,1) = - grav * BX_VERT_AVG(i,j,1) / ML_DEPTH(i,j)
            BX_VERT_AVG(i,j,2) = - grav * BX_VERT_AVG(i,j,2) / ML_DEPTH(i,j)
            BY_VERT_AVG(i,j,1) = - grav * BY_VERT_AVG(i,j,1) / ML_DEPTH(i,j)
@@ -1134,6 +1194,215 @@
 
         enddo
      enddo
+
+!!!!if lsubmeso_scaling  false!!!!!!!
+
+    do j=1,ny_block
+        do i=1,nx_block
+ 
+           WORK1(i,j)=c0
+ 
+           if( KMT_UNIFIED(i,j,bid) > 0 )then
+                 WORK1(i,j) = sqrt( p5 * (                          &
+                              ( BX_VERT_AVG(i,j,1)**2 + BX_VERT_AVG(i,j,2)**2 )  &
+                                / DXT_UNIFIED(i,j,bid)**2                                &
+                              + ( BY_VERT_AVG(i,j,1)**2 + BY_VERT_AVG(i,j,2)**2 )  &
+                                / DYT_UNIFIED(i,j,bid)**2 ) )
+                  WORK1(i,j) = WORK1(i,j) * ML_DEPTH(i,j) * (TIME_SCALE_UNIFIED(i,j,bid)**2)
+            endif
+
+
+            CONTINUE_INTEGRAL(i,j) = .true.
+            if( KMT_UNIFIED(i,j,bid) == 0 ) then
+                        CONTINUE_INTEGRAL(i,j) = .false.
+            endif
+ 
+            WORK2(i,j) = c0
+
+
+        enddo
+     enddo
+
+          
+     do k=2,km
+        !!$OMP PARALLEL DO SHARED(WORK3,CONTINUE_INTEGRAL,WORK2,k,bid,dzw_unified,zt_unified,dzwr_unified,RZ_SAVE_UNIFIED,ML_DEPTH)PRIVATE(i,j)DEFAULT(NONE)num_threads(60)
+        do j=1,ny_block
+           do i=1,nx_block
+
+              WORK3(i,j) = c0
+              if ( CONTINUE_INTEGRAL(i,j)  .and.  ML_DEPTH(i,j) > zt_unified(k) ) then
+                   WORK3(i,j) = dzw_unified(k-1) 
+              endif
+
+             if ( CONTINUE_INTEGRAL(i,j)  .and.  ML_DEPTH(i,j) <= zt_unified(k)  &
+                  .and.  ML_DEPTH(i,j) >= zt_unified(k-1) ) then
+                  WORK3(i,j) = ( (ML_DEPTH(i,j) - zt_unified(k-1))**2 ) * dzwr_unified(k-1)
+             endif
+
+             if ( CONTINUE_INTEGRAL(i,j) ) then
+             WORK2(i,j) = WORK2(i,j) + sqrt(-RZ_SAVE_UNIFIED(i,j,k,bid) * WORK3(i,j))
+             endif
+
+             if ( CONTINUE_INTEGRAL(i,j) .and.  ML_DEPTH(i,j) <= zt_unified(k)  &
+                     .and.  ML_DEPTH(i,j) >= zt_unified(k-1) )then
+                CONTINUE_INTEGRAL(i,j) = .false.
+             endif
+
+           enddo
+        enddo
+
+    enddo
+
+#ifdef CCSMCOUPLED
+     if ( any(CONTINUE_INTEGRAL) ) then
+       print *,'Incorrect mixed layer depth in submeso subroutine (II)'
+     endif
+#endif
+
+       do j=1,ny_block
+           do i=1,nx_block
+
+             if ( KMT_unified(i,j,bid) > 0 ) then
+
+                  WORK2(i,j) = sqrt_grav_unified * WORK2(i,j) * TIME_SCALE_unified(i,j,bid)
+
+                  HLS(i,j) = max ( WORK1(i,j), WORK2(i,j), hor_length_scale_unified )
+
+             endif
+
+           enddo
+        enddo
+
+   do k=1,km
+
+     reference_depth(ktp) = zt_unified(k) - p25 * dz_unified(k)
+     reference_depth(kbt) = zt_unified(k) + p25 * dz_unified(k)
+
+     do kk=ktp,kbt
+
+       !!$OMP PARALLEL DO DEFAULT(NONE)PRIVATE(i,j)SHARED(reference_depth,ML_DEPTH,KMT,WORK3,WORK2,WORK1,TIME_SCALE_UNIFIED,HLS,SF_SUBM_X_UNIFIED,SF_SUBM_Y_UNIFIED) &
+       !!$OMP SHARED(BX_VERT_AVG,BY_VERT_AVG,DXT_UNIFIED,DYT_UNIFIED,max_hor_grid_scale_unified,efficiency_factor_unified,kk,k,bid)num_threads(60)  
+       do j=1,ny_block
+           do i=1,nx_block
+
+
+               if ( reference_depth(kk) < ML_DEPTH(i,j)  .and.  &
+                    KMT_UNIFIED(i,j,bid) >= k ) then
+
+                        WORK3(i,j) = ( c1 - ( c2 * reference_depth(kk) / ML_DEPTH(i,j) ) )**2
+            
+                        WORK2(i,j) = ( c1 - WORK3(i,j) )  &
+                                    * ( c1 + ( 5.0_r8 / 21.0_r8 ) * WORK3(i,j) )
+
+                        WORK1(i,j) = efficiency_factor_unified * (ML_DEPTH(i,j)**2) * WORK2(i,j)  &
+                                     * TIME_SCALE_unified(i,j,bid) / HLS(i,j)
+
+!     in the following negative sign is omitted to be consistent with
+!     the GM implementation in hmix_gm subroutine. also, DXT and
+!     DYT usage is approximate. 
+
+                        SF_SUBM_X_UNIFIED(i,j,1,kk,k,bid) = WORK1(i,j) * BX_VERT_AVG(i,j,1)  &
+                                                          * min(DXT_UNIFIED(i,j,bid),max_hor_grid_scale_unified)
+                        SF_SUBM_X_UNIFIED(i,j,2,kk,k,bid) = WORK1(i,j) * BX_VERT_AVG(i,j,2)  &
+                                                          * min(DXT_UNIFIED(i,j,bid),max_hor_grid_scale_unified)
+                        SF_SUBM_Y_UNIFIED(i,j,1,kk,k,bid) = WORK1(i,j) * BY_VERT_AVG(i,j,1)  &
+                                                          * min(DYT_UNIFIED(i,j,bid),max_hor_grid_scale_unified)
+                        SF_SUBM_Y_UNIFIED(i,j,2,kk,k,bid) = WORK1(i,j) * BY_VERT_AVG(i,j,2)  &
+                                                          * min(DYT_UNIFIED(i,j,bid),max_hor_grid_scale_unified)
+
+               endif
+
+           enddo
+        enddo
+
+
+     enddo
+
+   enddo
+
+
+   USMT = c0
+   VSMT = c0
+
+   !start_time = omp_get_wtime()
+
+   do k=1,km
+
+!-----------------------------------------------------------------------
+!
+!  diagnostic computation of the submeso velocities
+!
+!-----------------------------------------------------------------------
+
+     kp1 = k+1
+     factor = c1
+     if ( k == km ) then
+       kp1 = k
+       factor = c0
+     endif
+
+     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+     do j=1,ny_block
+       do i=1,nx_block
+
+         if(j<=ny_block-1 .and. i<=nx_block-1) then
+
+         WORK1(i,j) = (   SF_SUBM_X_UNIFIED(i  ,j,1,kbt,k,  bid)    &
+               + factor * SF_SUBM_X_UNIFIED(i  ,j,1,ktp,kp1,bid)    &
+                        + SF_SUBM_X_UNIFIED(i+1,j,2,kbt,k,  bid)    &
+               + factor * SF_SUBM_X_UNIFIED(i+1,j,2,ktp,kp1,bid) )  &
+                * p25 * HYX_UNIFIED(i,j,bid)
+
+         WORK2(i,j) = (   SF_SUBM_Y_UNIFIED(i,j  ,1,kbt,k,  bid)    &
+               + factor * SF_SUBM_Y_UNIFIED(i,j  ,1,ktp,kp1,bid)    &
+                        + SF_SUBM_Y_UNIFIED(i,j+1,2,kbt,k,  bid)    &
+               + factor * SF_SUBM_Y_UNIFIED(i,j+1,2,ktp,kp1,bid) )  &
+               * p25 * HXY_UNIFIED(i,j,bid)
+
+         endif
+
+
+           USMB(i,j) = merge( WORK1(i,j), c0, k < KMT_UNIFIED(i,j,bid) .and. k < KMTE_UNIFIED(i,j,bid) )
+           VSMB(i,j) = merge( WORK2(i,j), c0, k < KMT_UNIFIED(i,j,bid) .and. k < KMTN_UNIFIED(i,j,bid) )
+
+            WORK1(i,j) = merge( USMT(i,j) - USMB(i,j), c0, k <= KMT_UNIFIED(i,j,bid)  &
+                                      .and. k <= KMTE_UNIFIED(i,j,bid) )
+
+            WORK2(i,j) = merge( VSMT(i,j) - VSMB(i,j), c0, k <= KMT_UNIFIED(i,j,bid)  &
+                                      .and. k <= KMTN_UNIFIED(i,j,bid) )
+
+            U_SUBM(i,j) = WORK1(i,j) * dzr_unified(k) / HTE_UNIFIED(i,j,bid)
+            V_SUBM(i,j) = WORK2(i,j) * dzr_unified(k) / HTN_UNIFIED(i,j,bid)
+
+       enddo
+     enddo
+
+
+
+     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+     do j=this_block%jb,this_block%je
+       do i=this_block%ib,this_block%ie
+
+         if ( k < KMT_UNIFIED(i,j,bid)  .and.  ( zw_unified(k) < max( ML_DEPTH(i,j),  &
+              ML_DEPTH(i+1,j), ML_DEPTH(i-1,j), ML_DEPTH(i,j+1),      &
+              ML_DEPTH(i,j-1) ) ) ) then
+           WBOT_SUBM(i,j) = WTOP_SUBM(i,j)             &
+                           + TAREA_R_UNIFIED(i,j,bid)          &
+                       * ( WORK1(i,j) - WORK1(i-1,j)   &
+                         + WORK2(i,j) - WORK2(i,j-1) )
+         else
+           WBOT_SUBM(i,j) = c0
+         endif
+
+       enddo
+     enddo
+
+     USMT = USMB
+     VSMT = VSMB
+
+     WTOP_SUBM = WBOT_SUBM
+
+   enddo
 
 
  end subroutine submeso_sf_unified
