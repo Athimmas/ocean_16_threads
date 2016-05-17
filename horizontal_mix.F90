@@ -617,7 +617,7 @@
          call submeso_flux(kk, TDTK(:,:,:,kk), TMIX, tavg_HDIFE_TRACER, &
                        tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
         enddo
-        end_time = omp_get_wtime()
+        !end_time = omp_get_wtime()
         !print *,"time at submeso_flux is ",end_time - start_time
         endif
         HDTK=HDTK+TDTK(:,:,:,k)

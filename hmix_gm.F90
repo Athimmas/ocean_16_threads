@@ -200,7 +200,7 @@
          kappa_freq,        &   ! frequency of KAPPA computations
          slope_control          ! choice for slope control
 
-      logical (log_kind) ::  &
+      logical (log_kind),public ::  &
          diag_gm_bolus          ! true for diagnostic bolus velocity computation 
 
 !-----------------------------------------------------------------------

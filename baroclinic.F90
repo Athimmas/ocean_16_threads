@@ -1824,6 +1824,7 @@
    if(k==1)then
 
    HMXL_unified = HMXL 
+   KPP_HBLT_UNIFIED = KPP_HBLT
  
    do kk=1,km
    call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk), TMIX, UMIX, VMIX, this_block)

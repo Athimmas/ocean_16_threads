@@ -31,7 +31,7 @@
    use io_types, only: nml_in, nml_filename, stdout
    use hmix_del2, only: init_del2u, init_del2t, hdiffu_del2, hdifft_del2
    use hmix_del4, only: init_del4u, init_del4t, hdiffu_del4, hdifft_del4
-   use hmix_gm, only: init_gm, hdifft_gm
+   use hmix_gm, only: init_gm, hdifft_gm,diag_gm_bolus
    use hmix_aniso, only: init_aniso, hdiffu_aniso
    use topostress, only: ltopostress
    use horizontal_mix, only:tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER
@@ -41,6 +41,7 @@
    use exit_mod, only: sigAbort, exit_pop, flushm
    use mix_submeso, only: init_submeso, submeso_flux, submeso_sf
    use hmix_gm_submeso_share, only: init_meso_mixing, tracer_diffs_and_isopyc_slopes
+   use vertical_mix, only: implicit_vertical_mix
    use state_mod, only: pressz
 
    implicit none
@@ -184,9 +185,11 @@
       SF_SUBM_X_UNIFIED,  &       ! components of the submesoscale 
       SF_SUBM_Y_UNIFIED           !  streamfunction
 
-   !dir$ attributes offload:mic :: HMXL_unified
+   !dir$ attributes offload:mic :: HMXL_UNIFIED
+   !dir$ attributes offload:mic :: BOLUS_SP_UNIFIED
+   !dir$ attributes offload:mic :: KPP_HBLT_UNIFIED
    real (r8), dimension(:,:,:), allocatable, public :: &
-      HMXL_UNIFIED
+      HMXL_UNIFIED,KPP_HBLT_UNIFIED,BOLUS_SP_UNIFIED
 
    !dir$ attributes offload:mic :: TIME_SCALE_UNIFIED
    real (r8), dimension(:,:,:), allocatable, public :: &
@@ -214,8 +217,58 @@
    real (r8), public :: &
       max_hor_grid_scale_unified     ! maximum horizontal grid scale allowed
 
+   !dir$ attributes offload:mic :: FZTOP_SUBM_UNIFIED
+   real (r8), dimension(:,:,:,:), allocatable, public :: &
+         FZTOP_SUBM_UNIFIED
+
+
 
 !vertical mix related variables
+
+
+!variables related to hmix_gm
+
+      !dir$ attributes offload:mic :: WTOP_ISOP_UNIFIED
+      !dir$ attributes offload:mic :: WBOT_ISOP_UNIFIED
+      !dir$ attributes offload:mic :: HXYS_UNIFIED
+      !dir$ attributes offload:mic :: HYXW_UNIFIED
+      !dir$ attributes offload:mic :: RB_UNIFIED
+      !dir$ attributes offload:mic :: RBR_UNIFIED
+      !dir$ attributes offload:mic :: BTP_UNIFIED
+      !dir$ attributes offload:mic :: BL_DEPTH_UNIFIED
+      !dir$ attributes offload:mic :: UIT_UNIFIED
+      !dir$ attributes offload:mic :: VIT_UNIFIED   
+      real (r8), dimension(:,:,:), allocatable ,public :: &
+         HYXW_UNIFIED, HXYS_UNIFIED, &        ! west and south-shifted values of above
+         RB_UNIFIED,                 &        ! Rossby radius
+         RBR_UNIFIED,                &        ! inverse of Rossby radius
+         BTP_UNIFIED,                &        ! beta plane approximation
+         BL_DEPTH_UNIFIED,           &        ! boundary layer depth
+         UIT_UNIFIED, VIT_UNIFIED             ! work arrays for isopycnal mixing velocities
+
+
+      real (r8), dimension(:,:,:), allocatable, public :: WTOP_ISOP_UNIFIED,WBOT_ISOP_UNIFIED
+
+      !dir$ attributes offload:mic :: HOR_DIFF_UNIFIED
+      real (r8), dimension(:,:,:,:,:), public ,allocatable :: &
+         HOR_DIFF_UNIFIED   ! 3D horizontal diffusion coefficient
+                            !  for top and bottom half of a grid cell
+
+
+      !dir$ attributes offload:mic :: ah_unified
+      !dir$ attributes offload:mic :: ah_bolus_unified
+      !dir$ attributes offload:mic :: ah_bkg_bottom_unified
+      !dir$ attributes offload:mic :: ah_bkg_srfbl_unified                       
+      !dir$ attributes offload:mic :: slm_r_unified
+      !dir$ attributes offload:mic :: slm_b_unified 
+      real (r8), public ::      &
+         ah_unified,            &       ! isopycnal diffusivity
+         ah_bolus_unified,      &       ! thickness (GM bolus) diffusivity
+         ah_bkg_bottom_unified, &       ! backgroud horizontal diffusivity at k = KMT
+         ah_bkg_srfbl_unified,  &       ! backgroud horizontal diffusivity within the surface boundary layer
+         slm_r_unified,         &       ! max. slope allowed for redi diffusion
+         slm_b_unified                  ! max. slope allowed for bolus transport
+
 
 
 !EOC
@@ -259,6 +312,17 @@
    allocate (SF_SUBM_Y_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic))
 
    allocate (HMXL_UNIFIED(nx_block,ny_block,nblocks_clinic))
+ 
+   allocate (HOR_DIFF_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
+
+
+   allocate(WTOP_ISOP_UNIFIED(nx_block,ny_block,nblocks_clinic), &
+              WBOT_ISOP_UNIFIED(nx_block,ny_block,nblocks_clinic), &
+                    UIT_UNIFIED(nx_block,ny_block,nblocks_clinic), &
+                    VIT_UNIFIED(nx_block,ny_block,nblocks_clinic))
+
+   allocate (KPP_HBLT_UNIFIED(nx_block,ny_block,nblocks_clinic), &
+            BOLUS_SP_UNIFIED(nx_block,ny_block,nblocks_clinic))
 
    HXY_UNIFIED      = c0
    HYX_UNIFIED      = c0
@@ -306,12 +370,16 @@
 
    allocate (TIME_SCALE_UNIFIED(nx_block,ny_block,nblocks_clinic))
 
+   allocate (FZTOP_SUBM_UNIFIED(nx_block,ny_block,nt,nblocks_clinic))
+
    TIME_SCALE_UNIFIED = TIME_SCALE
 
       efficiency_factor_unified = efficiency_factor
       hor_length_scale_unified = hor_length_scale
       sqrt_grav_unified = sqrt(grav)
       max_hor_grid_scale_unified = max_hor_grid_scale
+
+
 
 !-----------------------------------------------------------------------
 !EOC
@@ -401,8 +469,8 @@
       !if (k == 1) then
          !start_time = omp_get_wtime()
 
-         !call hdifft_gm(1, HDTK_BUF(:,:,:,1), TMIX, UMIX, VMIX, tavg_HDIFE_TRACER, &
-         !                tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
+         call hdifft_gm_unified(1, HDTK_BUF(:,:,:,1), TMIX, UMIX, VMIX, tavg_HDIFE_TRACER, &
+                         tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
 
          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(59) 
          !do kk=2,km
@@ -429,17 +497,17 @@
          !print *,"time at submeso_sf is ",end_time - start_time
         endif
 
-        !if(k==1) then
+        if(k==1) then
          !start_time = omp_get_wtime()
         !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(60) 
-        !do kk=1,km
-         !call submeso_flux(kk, TDTK(:,:,:,kk), TMIX, tavg_HDIFE_TRACER, &
-         !              tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
-        !enddo
+        do kk=1,km
+         call submeso_flux_unified(kk, TDTK(:,:,:,kk), TMIX, tavg_HDIFE_TRACER, &
+                              tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
+        enddo
         !end_time = omp_get_wtime()
         !print *,"time at submeso_flux is ",end_time - start_time
-        !endif
-        !HDTK=HDTK+TDTK(:,:,:,k)
+        endif
+        HDTK=HDTK+TDTK(:,:,:,k)
    
 
 !-----------------------------------------------------------------------
@@ -1195,7 +1263,7 @@
         enddo
      enddo
 
-!!!!if lsubmeso_scaling  false!!!!!!!
+!!!! if lsubmeso_scaling  false!!!!!!!
 
     do j=1,ny_block
         do i=1,nx_block
@@ -1406,6 +1474,423 @@
 
 
  end subroutine submeso_sf_unified
+
+ !dir$ attributes offload:mic :: submeso_flux_unified
+ subroutine submeso_flux_unified (k, GTK, TMIX, tavg_HDIFE_TRACER, &
+                    tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
+
+! !DESCRIPTION:
+!  Computes the fluxes due to submesoscale mixing of tracers
+!
+!INPUT PARAMETERS:
+
+   integer (int_kind), intent(in) :: k  ! depth level index
+   
+   type (block), intent(in) :: &
+      this_block            ! block info for this sub block
+   
+   real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+         TMIX                  ! tracers at all vertical levels
+                               !   at mixing time level   
+
+   integer (int_kind), dimension(nt), intent(in) :: &
+      tavg_HDIFE_TRACER, &! tavg id for east face diffusive flux of tracer
+      tavg_HDIFN_TRACER, &! tavg id for north face diffusive flux of tracer
+      tavg_HDIFB_TRACER   ! tavg id for bottom face diffusive flux of tracer
+   
+! !OUTPUT PARAMETERS:
+
+    real (r8), dimension(nx_block,ny_block,nt), intent(out) :: &
+         GTK     ! submesoscale tracer flux at level k
+      
+!-----------------------------------------------------------------------
+!
+!      local variables
+!
+!-----------------------------------------------------------------------
+
+      integer (int_kind), parameter :: &
+         ieast  = 1, iwest  = 2,       &
+         jnorth = 1, jsouth = 2
+      integer (int_kind)  :: &
+         i,j,n,                &!dummy loop counters
+         bid,                  &! local block address for this sub block
+         kp1,kk
+      
+      real (r8) :: &
+         fz, factor 
+ 
+      real (r8), dimension(nx_block,ny_block) :: &
+         CX, CY,                  &
+         WORK1, WORK2,            &! local work space
+         KMASK                     ! ocean mask
+         
+      real (r8), dimension(nx_block,ny_block,nt)  :: &
+         FX, FY                    ! fluxes across east, north faces
+
+      logical :: reg_match_init_gm
+
+      real (r8) :: WORK1prev,WORK2prev,KMASKprev,fzprev
+
+      CX = merge(HYX_UNIFIED(:,:,bid)*p25, c0, (k <= KMT_UNIFIED (:,:,bid))   &
+                                 .and. (k <= KMTE_UNIFIED(:,:,bid)))
+      CY = merge(HXY_UNIFIED(:,:,bid)*p25, c0, (k <= KMT_UNIFIED (:,:,bid))   &
+                                 .and. (k <= KMTN_UNIFIED(:,:,bid)))
+      
+      KMASK = merge(c1, c0, k < KMT_UNIFIED(:,:,bid))
+            
+      kp1 = k + 1
+      if ( k == km )  kp1 = k
+
+      if ( k < km ) then
+        factor    = c1
+      else
+        factor    = c0
+      endif
+
+      do n = 1,nt
+          do j=1,ny_block
+            do i=1,nx_block
+
+              if(i <= nx_block-1 ) then
+
+              FX(i,j,n) = CX(i,j)                          &
+               * ( SF_SUBM_X_UNIFIED(i  ,j,ieast,ktp,k,bid) * TZ_UNIFIED(i,j,k,n,bid)                      &
+                 + SF_SUBM_X_UNIFIED(i  ,j,ieast,kbt,k,bid) * TZ_UNIFIED(i,j,kp1,n,bid)                    &
+                 + SF_SUBM_X_UNIFIED(i+1,j,iwest,ktp,k,bid) * TZ_UNIFIED(i+1,j,k,n,bid)                    &
+                 + SF_SUBM_X_UNIFIED(i+1,j,iwest,kbt,k,bid) * TZ_UNIFIED(i+1,j,kp1,n,bid) )
+
+              endif  
+
+              if(j <= ny_block -1 )then
+
+              FY(i,j,n) =  CY(i,j)                          &
+               * ( SF_SUBM_Y_UNIFIED(i,j  ,jnorth,ktp,k,bid) * TZ_UNIFIED(i,j,k,n,bid)                      &
+                 + SF_SUBM_Y_UNIFIED(i,j  ,jnorth,kbt,k,bid) * TZ_UNIFIED(i,j,kp1,n,bid)                    &
+                 + SF_SUBM_Y_UNIFIED(i,j+1,jsouth,ktp,k,bid) * TZ_UNIFIED(i,j+1,k,n,bid)                    &
+                 + SF_SUBM_Y_UNIFIED(i,j+1,jsouth,kbt,k,bid) * TZ_UNIFIED(i,j+1,kp1,n,bid) )
+
+              endif
+
+              WORK1(i,j) = c0 ! zero halo regions so accumulate_tavg_field calls do not trap
+              WORK2(i,j) = c0
+              GTK(i,j,n) = c0
+              
+
+            enddo
+          enddo
+       end do
+
+      do n = 1,nt
+
+!-----------------------------------------------------------------------
+!
+!     calculate vertical submesoscale fluxes thru horizontal faces of T-cell
+!
+!-----------------------------------------------------------------------
+ 
+
+
+        do j=this_block%jb,this_block%je
+            do i=this_block%ib,this_block%ie
+              
+               if ( k < km ) then
+
+                  WORK1(i,j) = SF_SUBM_X_UNIFIED(i  ,j  ,ieast ,kbt,k  ,bid)     &
+                             * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k  ,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jnorth,kbt,k  ,bid)     &
+                             * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k  ,n,bid)  &
+                             + SF_SUBM_X_UNIFIED(i  ,j  ,iwest ,kbt,k  ,bid)     &
+                             * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k  ,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jsouth,kbt,k  ,bid)     &
+                             * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k  ,n,bid)
+
+
+                  WORK2(i,j) = factor                                    &
+                           * ( SF_SUBM_X_UNIFIED(i  ,j  ,ieast ,ktp,kp1,bid)     &
+                             * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,kp1,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jnorth,ktp,kp1,bid)     &
+                             * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,kp1,n,bid)  &
+                             + SF_SUBM_X_UNIFIED(i  ,j  ,iwest ,ktp,kp1,bid)     &
+                             * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,kp1,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jsouth,ktp,kp1,bid)     &
+                             * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,kp1,n,bid) ) 
+                   
+                  if(k==1) then
+ 
+                  fzprev = 0
+    
+                  else    
+
+    
+                  WORK1prev = SF_SUBM_X_UNIFIED(i  ,j  ,ieast ,kbt,k-1 ,bid)     &
+                             * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k-1,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jnorth,kbt,k-1,bid)     &
+                             * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k-1,n,bid)  &
+                             + SF_SUBM_X_UNIFIED(i  ,j  ,iwest ,kbt,k-1,bid)     &
+                             * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k-1,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jsouth,kbt,k-1,bid)     &
+                             * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k-1,n,bid)
+
+                  WORK2prev = factor &
+                           * ( SF_SUBM_X_UNIFIED(i  ,j  ,ieast ,ktp,kp1-1,bid)     &
+                             * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,kp1-1,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jnorth,ktp,kp1-1,bid)     &
+                             * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,kp1-1,n,bid)  &
+                             + SF_SUBM_X_UNIFIED(i  ,j  ,iwest ,ktp,kp1-1,bid)     &
+                             * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,kp1-1,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jsouth,ktp,kp1-1,bid)     &
+                             * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,kp1-1,n,bid) )
+
+                  KMASKprev = merge(c1, c0, k-1 < KMT_UNIFIED(i,j,bid))
+
+
+                  fzprev = -KMASKprev * p25 &
+                            * (WORK1prev + WORK2prev)
+
+                  endif 
+
+                  !if(fzprev /= FZTOP_SUBM(i,j,n,bid)) then 
+                  !   print *,"wrong value OH NO",k
+                  !else
+                  !   print *,"its okay Yeah",k
+                  !endif    
+
+                  fz = -KMASK(i,j) * p25    &
+                      * (WORK1(i,j) + WORK2(i,j))
+
+
+                  GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &
+                               + FY(i,j,n) - FY(i,j-1,n)  &
+                        + fzprev - fz )*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)
+
+                  !FZTOP_SUBM(i,j,n,bid) = fz
+
+               else  
+
+                  WORK1prev = SF_SUBM_X_UNIFIED(i  ,j  ,ieast ,kbt,k-1 ,bid)     &
+                             * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k-1,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jnorth,kbt,k-1,bid)     &
+                             * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k-1,n,bid)  &
+                             + SF_SUBM_X_UNIFIED(i  ,j  ,iwest ,kbt,k-1,bid)     &
+                             * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k-1,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jsouth,kbt,k-1,bid)     &
+                             * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k-1,n,bid)
+
+                  WORK2prev = factor &
+                           * ( SF_SUBM_X_UNIFIED(i  ,j  ,ieast ,ktp,km,bid)     &
+                             * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,km,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jnorth,ktp,km,bid)     &
+                             * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,km,n,bid)  &
+                             + SF_SUBM_X_UNIFIED(i  ,j  ,iwest ,ktp,km,bid)     &
+                             * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,km,n,bid)  &
+                             + SF_SUBM_Y_UNIFIED(i  ,j  ,jsouth,ktp,km,bid)     &
+                             * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,km,n,bid) )
+
+                  KMASKprev = merge(c1, c0, k-1 < KMT_UNIFIED(i,j,bid))
+
+
+                  fzprev = -KMASKprev * p25 &
+                            * (WORK1prev + WORK2prev)
+
+                  GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &
+                               + FY(i,j,n) - FY(i,j-1,n)  &
+                     + fzprev )*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)
+
+                   !FZTOP_SUBM(i,j,n,bid) = c0
+              
+               endif   
+
+            enddo
+          enddo
+
+
+!-----------------------------------------------------------------------
+!
+!     accumulate time average if necessary
+!
+!-----------------------------------------------------------------------
+
+      if ( mix_pass /= 1 ) then
+          if (accumulate_tavg_now(tavg_HDIFE_TRACER(n))) then
+            do j=this_block%jb,this_block%je
+            do i=this_block%ib,this_block%ie
+              WORK1(i,j) = FX(i,j,n)*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)
+            enddo
+            enddo
+            !call accumulate_tavg_field(WORK1,tavg_HDIFE_TRACER(n),bid,k)
+          endif
+
+          if (accumulate_tavg_now(tavg_HDIFN_TRACER(n))) then
+            do j=this_block%jb,this_block%je
+            do i=this_block%ib,this_block%ie
+              WORK1(i,j) = FY(i,j,n)*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)
+            enddo
+            enddo
+            !call accumulate_tavg_field(WORK1,tavg_HDIFN_TRACER(n),bid,k)
+          endif
+
+          if (accumulate_tavg_now(tavg_HDIFB_TRACER(n))) then
+            do j=this_block%jb,this_block%je
+            do i=this_block%ib,this_block%ie
+              WORK1(i,j) = FZTOP_SUBM_UNIFIED(i,j,n,bid)*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)
+            enddo
+            enddo
+            !call accumulate_tavg_field(WORK1,tavg_HDIFB_TRACER(n),bid,k)
+          endif
+      endif   ! mix_pass ne 1  
+
+!-----------------------------------------------------------------------
+!
+!     end of tracer loop
+!
+!-----------------------------------------------------------------------
+
+      enddo !ends the do n loop 
+     
+
+ end subroutine submeso_flux_unified
+
+ !***********************************************************************
+!BOP
+! !IROUTINE: hdifft_gm_unified
+! !INTERFACE:
+
+      !dir$ attributes offload:mic :: hdifft_gm_unified
+      subroutine hdifft_gm_unified (k, GTK, TMIX, UMIX, VMIX, tavg_HDIFE_TRACER, &
+                                  tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
+
+! !DESCRIPTION:
+!  Gent-McWilliams eddy transport parameterization
+!  and isopycnal diffusion.
+!
+!  This routine must be called successively with k = 1,2,3,...
+!
+! !REVISION HISTORY:
+!  same as module
+
+! !INPUT PARAMETERS:
+
+      integer (int_kind), intent(in) :: k  ! depth level index
+
+      real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+         TMIX                  ! tracers at all vertical levels
+                               !   at mixing time level
+
+      real (r8), dimension(nx_block,ny_block,km), intent(in) :: &
+         UMIX, VMIX            ! U,V  at all vertical levels
+                               !   at mixing time level
+
+      integer (int_kind), dimension(nt), intent(in) :: &
+         tavg_HDIFE_TRACER, &! tavg id for east face diffusive flux of tracer
+         tavg_HDIFN_TRACER, &! tavg id for north face diffusive flux of tracer
+         tavg_HDIFB_TRACER   ! tavg id for bottom face diffusive flux of tracer
+
+      type (block), intent(in) :: &
+         this_block            ! block info for this sub block
+
+! !OUTPUT PARAMETERS:
+
+      real (r8), dimension(nx_block,ny_block,nt), intent(out) :: &
+         GTK     ! diffusion+bolus advection for nth tracer at level k
+
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!     local variables
+!
+!-----------------------------------------------------------------------
+
+      integer (int_kind), parameter :: &
+         ieast  = 1, iwest  = 2,       &
+         jnorth = 1, jsouth = 2
+
+      integer (int_kind) :: &
+         i,j,n,kk,          &! dummy loop counters
+         kid,ktmp,          &! array indices
+         kk_sub, kp1,       & 
+         bid                 ! local block address for this sub block
+
+      real (r8) :: &
+         fz, dz_bottom, factor,fzprev, KMASKprev, WORK3prev, dzbottomprev
+
+      real (r8), dimension(nx_block,ny_block) :: &
+         CX, CY,                  &
+         RZ,                      &! Dz(rho)
+         SLA,                     &! absolute value of slope
+         WORK1, WORK2,            &! local work space
+         WORK3, WORK4,            &! local work space
+         KMASK,                   &! ocean mask
+         TAPER1, TAPER2, TAPER3,  &! tapering factors
+         UIB, VIB,                &! work arrays for isopycnal mixing velocities
+         U_ISOP, V_ISOP            ! horizontal components of isopycnal velocities
+
+      real (r8), dimension(nx_block,ny_block,nt) :: &
+         FX, FY                     ! fluxes across east, north faces
+
+      real (r8), dimension(2) :: &
+         reference_depth
+
+!-----------------------------------------------------------------------
+!
+!     initialize various quantities
+!
+!-----------------------------------------------------------------------
+
+      bid = this_block%local_id
+
+      U_ISOP = c0
+      V_ISOP = c0
+      WORK1  = c0
+      WORK2  = c0
+      WORK3  = c0
+      WORK4  = c0
+
+      if ( .not. implicit_vertical_mix )  print *, "Error in hmix_gm if ( .not. implicit_vertical_mix )"
+
+      if ( k == 1 ) then
+
+        if ( diag_gm_bolus ) then
+          UIB = c0
+          VIB = c0
+          UIT_UNIFIED(:,:,bid) = c0
+          VIT_UNIFIED(:,:,bid) = c0
+          WBOT_ISOP_UNIFIED(:,:,bid) = c0
+        endif
+
+        HOR_DIFF_UNIFIED(:,:,ktp,k,bid) = ah_bkg_srfbl_unified
+
+        BL_DEPTH_UNIFIED(:,:,bid) = KPP_HBLT_UNIFIED(:,:,bid)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+     endif ! if k == 1 
+
+ end subroutine hdifft_gm_unified 
+
 
  end module horizontal_mix_unified
 
