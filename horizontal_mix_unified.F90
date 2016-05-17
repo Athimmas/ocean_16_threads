@@ -28,7 +28,8 @@
    use communicate, only: my_task, master_task
    use time_management, only: km, nt, mix_pass
    use broadcast, only: broadcast_scalar
-   use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr,KMTE, KMT, KMTN
+   use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr,KMTE, KMT,&
+                   KMTN,zt,dzw,zw
    use io_types, only: nml_in, nml_filename, stdout
    use hmix_del2, only: init_del2u, init_del2t, hdiffu_del2, hdifft_del2
    use hmix_del4, only: init_del4u, init_del4t, hdiffu_del4, hdifft_del4
@@ -85,6 +86,12 @@
 
 !  !State related global variables
 
+
+   !dir$ attributes offload:mic :: tmin
+   !dir$ attributes offload:mic :: tmax
+   !dir$ attributes offload:mic :: smin
+   !dir$ attributes offload:mic :: smax
+   !dir$ attributes offload:mic :: pressz_unified
    real (r8), dimension(km) :: &
       tmin, tmax,        &! valid temperature range for level k
       smin, smax,        &! valid salinity    range for level k
@@ -137,6 +144,46 @@
       public :: &
       KMTN_unified,KMTE_unified
 
+   !dir$ attributes offload:mic :: DZT_unified
+   real (POP_r8), dimension(:,:,:,:), allocatable, public :: &
+      DZT_unified
+
+      !*** dimension(1:km)
+
+   !dir$ attributes offload:mic :: dz_unified
+   !dir$ attributes offload:mic :: zw_unified
+   !dir$ attributes offload:mic :: dzr_unified
+   !dir$ attributes offload:mic :: zt_unified
+   real (POP_r8), dimension(km), public :: &
+      dz_unified                ,&! thickness of layer k
+      dzr_unified               ,&! reciprocals of dz, c2dz
+      zt_unified                ,&! vert dist from sfc to midpoint of layer
+      zw_unified                  ! vert dist from sfc to bottom of layer
+
+   !*** dimension(0:km)
+
+   !dir$ attributes offload:mic :: dzw_unified
+   !dir$ attributes offload:mic :: dzwr_unified
+   real (POP_r8), dimension(0:km), public :: &
+      dzw_unified, dzwr_unified          ! midpoint of k to midpoint of k+1
+                                      !   and its reciprocal
+
+
+!mix_submeso related variables
+
+   !dir$ attributes offload:mic :: SF_SUBM_X_UNIFIED
+   !dir$ attributes offload:mic :: SF_SUBM_Y_UNIFIED
+   real (r8), dimension(:,:,:,:,:,:), allocatable, public :: &
+      SF_SUBM_X_UNIFIED,  &       ! components of the submesoscale 
+      SF_SUBM_Y_UNIFIED           !  streamfunction
+
+   !dir$ attributes offload:mic :: HMXL_unified
+   real (r8), dimension(:,:,:), allocatable, public :: &
+      HMXL_UNIFIED
+
+!vertical mix related variables
+
+
 !EOC
 !***********************************************************************
 
@@ -154,8 +201,9 @@
 
    allocate (HXY_UNIFIED (nx_block,ny_block,nblocks_clinic),    &
              HYX_UNIFIED (nx_block,ny_block,nblocks_clinic))
-    allocate (SLX_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic),  &
-              SLY_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic))
+   allocate (SLX_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic),  &
+             SLY_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic))
+
    allocate (TX_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic),  &
              TY_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic),  &
              TZ_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic))
@@ -165,6 +213,10 @@
 
    allocate (RZ_SAVE_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
 
+   allocate (SF_SUBM_X_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic))
+   allocate (SF_SUBM_Y_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic))
+
+   allocate (HMXL_UNIFIED(nx_block,ny_block,nblocks_clinic))
 
    HXY_UNIFIED      = c0
    HYX_UNIFIED      = c0
@@ -184,10 +236,22 @@
    smin =   0.0_r8  ! limited   on the low  end
    smax = 0.999_r8  ! unlimited on the high end
 
+!! initialization for grid 
+
+   allocate (DZT_unified(nx_block,ny_block,0:km+1,max_blocks_clinic))
+
    pressz_unified = pressz
    KMT_unified = KMT
    KMTE_unified = KMTE
    KMTN_unified = KMTN
+   DZT_unified = DZT
+
+   dz_unified = dz
+   dzr_unified = dzr
+   zt_unified = zt
+   zw_unified = zw
+   dzw_unified = dzw
+   dzwr_unified = dzwr
 
 !-----------------------------------------------------------------------
 !EOC
@@ -298,12 +362,12 @@
 
       !print *,"time at hdifft_gm is ",end_time - start_time
  
-        !if (k == 1) then
+        if (k == 1) then
          !start_time = omp_get_wtime()
-         !call submeso_sf(TMIX, this_block)
+         call submeso_sf_unified(TMIX, this_block)
          !end_time = omp_get_wtime()
          !print *,"time at submeso_sf is ",end_time - start_time
-        !endif
+        endif
 
         !if(k==1) then
          !start_time = omp_get_wtime()
@@ -888,6 +952,191 @@
 !EOC
 
  end subroutine state_unified
+
+   !dir$ attributes offload:mic :: submeso_sf_unified
+   subroutine submeso_sf_unified ( TMIX, this_block )
+
+! !DESCRIPTION:
+!  The Fox-Kemper, Ferrari, and Hallberg [2008] submesoscale parameterization
+!  for restratification by mixed layer eddies.
+!
+! !REVISION HISTORY:
+!  same as module
+
+! !INPUT PARAMETERS:
+
+   type (block), intent(in) :: &
+      this_block            ! block info for this sub block
+
+   real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+      TMIX                  ! tracers at all vertical levels
+                            !   at mixing time level
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!  local variables
+!
+!-----------------------------------------------------------------------
+
+   integer (int_kind) :: &
+      i, j, k, kk,       &  ! dummy loop counters
+      kp1,               &
+      bid,temp              ! local block address for this sub block
+
+   real (r8), dimension(nx_block,ny_block) :: &
+      ML_DEPTH,          &  ! mixed layer depth
+      HLS,               &  ! horizontal length scale
+      WORK1, WORK2,      &  ! work arrays
+      WORK3,             &
+      USMT, VSMT,        &  ! arrays for submeso velocity computation
+      USMB, VSMB,        &
+      U_SUBM, V_SUBM,    &
+      WBOT_SUBM,         &
+      WTOP_SUBM
+
+   real (r8), dimension(2) :: &
+      reference_depth
+
+   logical (log_kind), dimension(nx_block,ny_block) :: &
+      CONTINUE_INTEGRAL     ! flag
+
+   real (r8), dimension(nx_block,ny_block,2) :: &
+      BX_VERT_AVG,       &  ! horizontal buoyancy differences vertically 
+      BY_VERT_AVG           !  averaged within the mixed layer   
+
+   real (r8) :: &
+      zw_top, factor
+
+   real (r8) :: &
+      start_time, end_time
+
+      
+!-----------------------------------------------------------------------
+!
+!  initialize various quantities
+!
+!-----------------------------------------------------------------------
+         
+   bid = this_block%local_id
+   
+
+   WORK1     = c0
+   WORK2     = c0
+   WORK3     = c0
+   HLS       = c0
+   USMT      = c0
+   USMB      = c0
+   VSMT      = c0
+   VSMB      = c0
+   U_SUBM    = c0
+   V_SUBM    = c0
+   WTOP_SUBM = c0
+   WBOT_SUBM = c0
+
+   BX_VERT_AVG = c0
+   BY_VERT_AVG = c0
+
+
+     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(k,kk,temp,j,i)num_threads(60)collapse(4)
+     do k=1,km
+        do kk=1,2
+           do temp=1,2
+              do j=1,ny_block
+                 do i=1,nx_block
+
+                    SF_SUBM_X_unified(i,j,temp,kk,k,bid) = c0
+                    SF_SUBM_Y_unified(i,j,temp,kk,k,bid) = c0
+
+                 enddo
+              enddo
+            enddo
+          enddo
+      enddo
+
+   !print *,"base time is",end_time - start_time
+
+   ML_DEPTH(:,:) = HMXL_UNIFIED(:,:,bid) 
+   
+
+   do j=1,ny_block
+      do i=1,nx_block
+          CONTINUE_INTEGRAL(i,j) = .true.
+          if( KMT(i,j,bid) == 0 ) then
+           CONTINUE_INTEGRAL(i,j) = .false.
+          endif
+      enddo
+   enddo
+!-----------------------------------------------------------------------
+!
+!  compute vertical averages of horizontal buoyancy differences 
+!  within the mixed layer 
+!
+!-----------------------------------------------------------------------
+
+   !start_time = omp_get_wtime()
+   do k=1,km
+   
+     zw_top = c0
+     if ( k > 1 )  zw_top = zw_unified(k-1)
+
+    !!$OMP PARALLEL DO SHARED(CONTINUE_INTEGRAL,BX_VERT_AVG,RX,RY,ML_DEPTH)PRIVATE(i,WORK3)num_threads(60)SCHEDULE(dynamic,16)
+    do j=1,ny_block
+        do i=1,nx_block
+
+            WORK3(i,j)=c0
+            if( CONTINUE_INTEGRAL(i,j)  .and.  ML_DEPTH(i,j) > zw_unified(k) )then
+               WORK3(i,j) = dz_unified(k)
+           endif 
+
+            if( CONTINUE_INTEGRAL(i,j)  .and.  ML_DEPTH(i,j) <= zw_unified(k)  &
+             .and.  ML_DEPTH(i,j) > zw_top ) then
+                    WORK3(i,j) = ML_DEPTH(i,j) - zw_top
+            endif
+
+            if ( CONTINUE_INTEGRAL(i,j) ) then
+                 BX_VERT_AVG(i,j,1) = BX_VERT_AVG(i,j,1)        &
+                                      + RX_UNIFIED(i,j,1,k,bid) * WORK3(i,j)
+                 BX_VERT_AVG(i,j,2) = BX_VERT_AVG(i,j,2)        &
+                                      + RX_UNIFIED(i,j,2,k,bid) * WORK3(i,j)
+                 BY_VERT_AVG(i,j,1) = BY_VERT_AVG(i,j,1)        &
+                                      + RY_UNIFIED(i,j,1,k,bid) * WORK3(i,j)
+                 BY_VERT_AVG(i,j,2) = BY_VERT_AVG(i,j,2)        &
+                                      + RY_UNIFIED(i,j,2,k,bid) * WORK3(i,j)
+            endif
+
+            if ( CONTINUE_INTEGRAL(i,j) .and.  ML_DEPTH(i,j) <= zw_unified(k)  &
+                  .and.  ML_DEPTH(i,j) > zw_top ) then
+             CONTINUE_INTEGRAL(i,j) = .false.
+            endif
+
+      enddo
+   enddo
+
+  enddo
+
+
+#ifdef CCSMCOUPLED
+   if ( any(CONTINUE_INTEGRAL) ) then
+     print *,'Incorrect mixed layer depth in submeso subroutine (I)'
+   endif
+#endif
+
+    do j=1,ny_block
+        do i=1,nx_block
+
+           if ( KMT(i,j,bid) > 0 ) then
+           BX_VERT_AVG(i,j,1) = - grav * BX_VERT_AVG(i,j,1) / ML_DEPTH(i,j)
+           BX_VERT_AVG(i,j,2) = - grav * BX_VERT_AVG(i,j,2) / ML_DEPTH(i,j)
+           BY_VERT_AVG(i,j,1) = - grav * BY_VERT_AVG(i,j,1) / ML_DEPTH(i,j)
+           BY_VERT_AVG(i,j,2) = - grav * BY_VERT_AVG(i,j,2) / ML_DEPTH(i,j)
+           endif
+
+        enddo
+     enddo
+
+
+ end subroutine submeso_sf_unified
 
  end module horizontal_mix_unified
 
