@@ -31,7 +31,8 @@
    use io_types, only: nml_in, nml_filename, stdout
    use hmix_del2, only: init_del2u, init_del2t, hdiffu_del2, hdifft_del2
    use hmix_del4, only: init_del4u, init_del4t, hdiffu_del4, hdifft_del4
-   use hmix_gm, only: hdifft_gm,diag_gm_bolus,kappa_isop_type,kappa_thic_type
+   use hmix_gm, only: hdifft_gm,diag_gm_bolus,kappa_isop_type,kappa_thic_type &
+                      transition_layer_on
    use hmix_aniso, only: init_aniso, hdiffu_aniso
    use topostress, only: ltopostress
    use horizontal_mix, only:tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER
@@ -2415,6 +2416,19 @@
 
       real (r8), dimension(nx_block,ny_block,km) :: &
          BUOY_FREQ_SQ_NORM    ! normalized N^2 defined at level interfaces
+
+
+      bid = this_block%local_id
+
+      BUOY_FREQ_SQ_NORM         = c0
+      BUOY_FREQ_SQ_REF          = c0
+      KAPPA_VERTICAL_UNIFIED(:,:,:,bid) = c1
+
+      K_MIN = merge( km+1, 0, KMT_UNIFIED(:,:,bid) /= 0 )
+
+      
+      SDL = KPP_HBLT_UNIFIED(:,:,bid)
+      if(transition_layer_on) SDL = TLT_UNIFIED%INTERIOR_DEPTH(:,:,bid)
 
 
  end subroutine buoyancy_frequency_dependent_profile_unified
