@@ -43,6 +43,7 @@
    use hmix_gm_submeso_share, only: init_meso_mixing, tracer_diffs_and_isopyc_slopes
    use vertical_mix, only: implicit_vertical_mix
    use state_mod, only: pressz
+   use omp_lib
 
    implicit none
    private
@@ -269,6 +270,34 @@
          slm_r_unified,         &       ! max. slope allowed for redi diffusion
          slm_b_unified                  ! max. slope allowed for bolus transport
 
+      type tlt_info_unified
+        real (r8), dimension(nx_block,ny_block,max_blocks_clinic) :: &
+           DIABATIC_DEPTH,  &   ! depth of the diabatic region at the
+                                !  surface, i.e. mean mixed or boundary layer
+                                !  depth
+           THICKNESS,       &   ! transition layer thickness
+           INTERIOR_DEPTH       ! depth at which the interior, adiabatic
+                                !  region starts, i.e.
+                                !   = TLT%DIABATIC_DEPTH + TLT%THICKNESS
+        integer (int_kind), &
+              dimension(nx_block,ny_block,max_blocks_clinic) :: &
+           K_LEVEL,  &          ! k level at or below which the interior,
+                                !  adiabatic region starts
+           ZTW                  ! designates if the interior region
+                                !  starts below depth zt or zw.
+                                !  ( = 1 for zt, = 2 for zw )
+      end type tlt_info_unified
+
+      !dir$ attributes offload:mic :: TLT_UNIFIED
+      type (tlt_info_unified),public :: &
+         TLT_UNIFIED            ! transition layer thickness related fields 
+
+
+!variables realted to vmix_kpp
+
+   !dir$ attributes offload : mic :: zgrid_unified
+   real (r8), dimension(:), allocatable, public :: &
+      zgrid_unified           ! depth at cell interfaces
 
 
 !EOC
@@ -287,6 +316,7 @@
                         max_hor_grid_scale
  use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr,KMTE, KMT,&
                    KMTN,zt,dzw,zw,DXT,DYT,HTN,HTE,TAREA_R
+ use vmix_kpp, only:zgrid
  use prognostic
  use vertical_mix
  use omp_lib
@@ -358,6 +388,7 @@
    zw_unified = zw
    dzw_unified = dzw
    dzwr_unified = dzwr
+   
 
    DXT_UNIFIED = DXT
    DYT_UNIFIED = DYT
@@ -379,7 +410,11 @@
       sqrt_grav_unified = sqrt(grav)
       max_hor_grid_scale_unified = max_hor_grid_scale
 
+!! Variables related to vmix_kpp
 
+  allocate  (zgrid_unified(0:km+1)) 
+
+  zgrid_unified = zgrid
 
 !-----------------------------------------------------------------------
 !EOC
@@ -1863,34 +1898,207 @@
 
         BL_DEPTH_UNIFIED(:,:,bid) = KPP_HBLT_UNIFIED(:,:,bid)
 
+        call smooth_hblt_unified ( .false., .true., bid,  &
+                     SMOOTH_OUT=TLT_UNIFIED%DIABATIC_DEPTH(:,:,bid) )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        
 
 
      endif ! if k == 1 
 
  end subroutine hdifft_gm_unified 
 
+!***********************************************************************
+!BOP
+! !IROUTINE: smooth_hblt
+! !INTERFACE:
+
+ !dir$ attributes offload:mic :: smooth_hblt_unified
+ subroutine smooth_hblt_unified (overwrite_hblt, use_hmxl, &
+                         bid, HBLT, KBL, SMOOTH_OUT)
+
+! !DESCRIPTION:
+!  This subroutine uses a 1-1-4-1-1 Laplacian filter one time
+!  on HBLT or HMXL to reduce any horizontal two-grid-point noise.
+!  If HBLT is overwritten, KBL is adjusted after smoothing.
+!
+! !REVISION HISTORY:
+!  same as module
+
+! !INPUT PARAMETERS:
+
+   logical (log_kind), intent(in) :: &
+      overwrite_hblt,   &    ! if .true.,  HBLT is overwritten
+                             ! if .false., the result is returned in
+                             !  a dummy array
+      use_hmxl               ! if .true., smooth HMXL
+                             ! if .false., smooth HBLT
+
+   integer (int_kind), intent(in) :: &
+      bid                    ! local block address
+
+! !INPUT/OUTPUT PARAMETERS:
+
+   real (r8), dimension(nx_block,ny_block), optional, intent(inout) :: &
+      HBLT                   ! boundary layer depth
+
+   integer (int_kind), dimension(nx_block,ny_block), optional, intent(inout) :: &
+      KBL                    ! index of first lvl below hbl
+
+! !OUTPUT PARAMETERS:
+
+   real (r8), dimension(nx_block,ny_block), optional, intent(out) ::  &
+      SMOOTH_OUT              ! optional output array containing the
+                              !  smoothened field if overwrite_hblt is false
+
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!     local variables
+!
+!-----------------------------------------------------------------------
+   character (char_len) ::  &
+      message
+
+   integer (int_kind) :: &
+      i, j,              &  ! horizontal loop indices
+      k                     ! vertical level index
+
+   real (r8), dimension(nx_block,ny_block) ::  &
+      WORK1, WORK2
+
+   real (r8) ::  &
+     cc, cw, ce, cn, cs, &  ! averaging weights
+     ztmp                   ! temp for level depth
+
+   real (r8) start_time,end_time
+
+!-----------------------------------------------------------------------
+!
+!     consistency checks 
+!
+!-----------------------------------------------------------------------
+
+   if ( overwrite_hblt  .and.  ( .not.present(KBL)  .or.        &
+                                 .not.present(HBLT) ) ) then      
+     message = 'incorrect subroutine arguments for smooth_hblt, error # 1'
+     print *,message
+     !call exit_POP (sigAbort, trim(message))
+   endif
+
+   if ( .not.overwrite_hblt  .and.  .not.present(SMOOTH_OUT) ) then 
+     print *,message 
+     message = 'incorrect subroutine arguments for smooth_hblt, error # 2'
+     !call exit_POP (sigAbort, trim(message))
+   endif
+
+   if ( use_hmxl .and. .not.present(SMOOTH_OUT) ) then          
+     message = 'incorrect subroutine arguments for smooth_hblt, error # 3'
+     print *,message
+     !call exit_POP (sigAbort, trim(message))
+   endif
+
+   if ( overwrite_hblt  .and.  use_hmxl ) then                  
+     message = 'incorrect subroutine arguments for smooth_hblt, error # 4'
+     print *,message 
+     !call exit_POP (sigAbort, trim(message))
+   endif
+
+!-----------------------------------------------------------------------
+!
+!     perform one smoothing pass since we cannot do the necessary 
+!     boundary updates for multiple passes.
+!
+!-----------------------------------------------------------------------
+
+
+   if ( use_hmxl ) then
+     WORK2 = HMXL_UNIFIED(:,:,bid)
+   else
+     WORK2 = HBLT
+   endif
+
+   WORK1 = WORK2
+
+   do j=2,ny_block-1
+     do i=2,nx_block-1
+       if ( KMT_UNIFIED(i,j,bid) /= 0 ) then
+         cw = p125
+         ce = p125
+         cn = p125
+         cs = p125
+         cc = p5
+         if ( KMT_UNIFIED(i-1,j,bid) == 0 ) then
+           cc = cc + cw
+           cw = c0
+         endif
+         if ( KMT_UNIFIED(i+1,j,bid) == 0 ) then
+           cc = cc + ce
+           ce = c0
+         endif
+         if ( KMT_UNIFIED(i,j-1,bid) == 0 ) then
+           cc = cc + cs
+           cs = c0
+         endif
+         if ( KMT_UNIFIED(i,j+1,bid) == 0 ) then
+           cc = cc + cn
+           cn = c0
+         endif
+         WORK2(i,j) =  cw * WORK1(i-1,j)   &
+                     + ce * WORK1(i+1,j)   &
+                     + cs * WORK1(i,j-1)   &
+                     + cn * WORK1(i,j+1)   &
+                     + cc * WORK1(i,j)
+       endif
+     enddo
+   enddo
+
+
+   do k=1,km
+     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(ztmp,j,i)NUM_THREADS(60)
+     do j=2,ny_block-1
+       do i=2,nx_block-1
+
+           ztmp = -zgrid_unified(k)
+
+         if ( k == KMT_UNIFIED(i,j,bid)  .and.  WORK2(i,j) > ztmp ) then
+           WORK2(i,j) = ztmp
+         endif
+
+       enddo
+     enddo
+     !!$OMP END PARALLEL DO
+   enddo
+
+   if ( overwrite_hblt  .and.  .not.use_hmxl ) then
+
+     HBLT = WORK2
+
+     do k=1,km
+       do j=2,ny_block-1
+         do i=2,nx_block-1
+
+             ztmp = -zgrid_unified(k)
+
+           if ( KMT_UNIFIED(i,j,bid) /= 0            .and.  &
+                ( HBLT(i,j) >  -zgrid_unified(k-1) ) .and.  &
+                ( HBLT(i,j) <= ztmp        ) ) KBL(i,j) = k
+     
+         enddo
+       enddo
+     enddo
+
+   else
+
+     SMOOTH_OUT = WORK2
+
+   endif
+ 
+
+!-----------------------------------------------------------------------
+
+ end subroutine smooth_hblt_unified
 
  end module horizontal_mix_unified
 
