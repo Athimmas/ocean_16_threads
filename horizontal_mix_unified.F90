@@ -292,6 +292,11 @@
       type (tlt_info_unified),public :: &
          TLT_UNIFIED            ! transition layer thickness related fields 
 
+      !dir$ attributes offload:mic :: SLA_SAVE_UNIFIED
+      real (r8), dimension(:,:,:,:,:), allocatable , public :: &
+         SLA_SAVE_UNIFIED             ! isopycnal slopes
+
+
 
 !variables realted to vmix_kpp
 
@@ -415,6 +420,12 @@
   allocate  (zgrid_unified(0:km+1)) 
 
   zgrid_unified = zgrid
+
+!! variables for allocatng hmix_gm variables
+
+  allocate (SLA_SAVE_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
+  allocate (RB_UNIFIED(nx_block,ny_block,nblocks_clinic))
+ 
 
 !-----------------------------------------------------------------------
 !EOC
@@ -1901,7 +1912,30 @@
         call smooth_hblt_unified ( .false., .true., bid,  &
                      SMOOTH_OUT=TLT_UNIFIED%DIABATIC_DEPTH(:,:,bid) )
 
-        
+          !!$OMP PARALLEL DO &
+          !!$OMP DEFAULT(SHARED)PRIVATE(kid,i,j,kk_sub,kk)NUM_THREADS(60)COLLAPSE(3)
+          do kk=1,km
+            do kk_sub = ktp,kbt
+                  do j=1,ny_block
+                     do i=1,nx_block                 
+
+                        kid = kk + kk_sub - 2  
+
+                        SLA_SAVE_UNIFIED(i,j,kk_sub,kk,bid) = dzw_unified(kid)*sqrt(p5*( &
+                        (SLX_UNIFIED(i,j,1,kk_sub,kk,bid)**2                     &
+                        + SLX_UNIFIED(i,j,2,kk_sub,kk,bid)**2)/DXT_UNIFIED(i,j,bid)**2   &
+                        + (SLY_UNIFIED(i,j,1,kk_sub,kk,bid)**2                   &
+                        + SLY_UNIFIED(i,j,2,kk_sub,kk,bid)**2)/DYT_UNIFIED(i,j,bid)**2)) &
+                        + eps
+                     
+                     enddo
+                  enddo         
+            enddo
+          enddo
+          !!$OMP END PARALLEL DO
+
+
+          call transition_layer_unified ( this_block )
 
 
      endif ! if k == 1 
@@ -2099,6 +2133,168 @@
 !-----------------------------------------------------------------------
 
  end subroutine smooth_hblt_unified
+
+
+ !dir$ attributes offload:mic :: transition_layer_unified
+ subroutine transition_layer_unified( this_block )
+
+! !DESCRIPTION:
+!  Compute transition layer related fields. the related algorithms
+!  should work even with zero transition layer depth.
+!
+! !REVISION HISTORY:
+!  same as module
+
+! !INPUT PARAMETERS:
+
+      type (block), intent(in) :: &
+         this_block          ! block info for this sub block
+
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!     local variables
+!
+!-----------------------------------------------------------------------
+
+      integer (int_kind) :: &
+         k, kk,     &        ! loop indices
+         bid,i,j             ! local block address for this sub block
+
+      integer (int_kind), dimension(nx_block,ny_block) :: &
+         K_START,   &        ! work arrays for TLT%K_LEVEL and 
+         K_SUB               !  TLT%ZTW, respectively
+
+      logical (log_kind), dimension(nx_block,ny_block) :: &
+         COMPUTE_TLT         ! flag
+
+      real (r8), dimension(nx_block,ny_block) :: &
+         WORK                ! work space for TLT%THICKNESS
+
+      real (r8), dimension(2) :: &
+         reference_depth     ! zt or zw
+
+!-----------------------------------------------------------------------
+!
+!     initialize various quantities
+!
+!----------------------------------------------------------------------- 
+
+      bid = this_block%local_id
+
+      K_START = 0
+      K_SUB   = 0
+
+      TLT_UNIFIED%THICKNESS(:,:,bid)      = c0
+      TLT_UNIFIED%INTERIOR_DEPTH(:,:,bid) = c0
+      TLT_UNIFIED%K_LEVEL(:,:,bid)        = 0
+      TLT_UNIFIED%ZTW(:,:,bid)            = 0
+
+      COMPUTE_TLT = merge(.true., .false., KMT_UNIFIED(:,:,bid) /= 0)
+
+      !start_time = omp_get_wtime()
+      
+      do k=1,km
+
+              !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60) 
+              do j=1,ny_block
+                   do i=1,nx_block
+
+                      if ( COMPUTE_TLT(i,j)  .and.  &
+                         TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid) < zw_unified(k) ) then
+
+                         K_START(i,j) = k+1
+                         K_SUB(i,j)   = ktp
+
+                         TLT_UNIFIED%THICKNESS(i,j,bid) = zw_unified(k) - TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)
+                         TLT_UNIFIED%K_LEVEL(i,j,bid)   = k
+                         TLT_UNIFIED%ZTW(i,j,bid)       = 2
+
+                         COMPUTE_TLT(i,j) = .false.
+
+                      endif
+
+          
+                      if ( k /= 1  .and.  K_START(i,j) == k+1  .and. &
+                         TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid) < zt_unified(k) ) then
+                         K_START(i,j) = k
+                         K_SUB(i,j)   = kbt
+
+                         TLT_UNIFIED%THICKNESS(i,j,bid) = zt_unified(k) - TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)
+                         TLT_UNIFIED%K_LEVEL(i,j,bid)   = k
+                         TLT_UNIFIED%ZTW(i,j,bid)       = 1
+
+                      endif
+
+                   enddo
+              enddo
+      enddo
+  
+#ifdef CCSMCOUPLED
+#ifndef _HIRES
+
+      if ( any(COMPUTE_TLT) ) then
+        print *,"Incorrect DIABATIC_DEPTH value in TLT computation"
+      endif
+
+#endif
+#endif
+
+             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+             do j=1,ny_block
+                   do i=1,nx_block
+
+                      if ( KMT_UNIFIED(i,j,bid) == 0  .or.  K_START(i,j) > KMT_UNIFIED(i,j,bid)  .or.  &
+                      ( K_START(i,j) == KMT_UNIFIED(i,j,bid)  .and.  K_SUB(i,j) == kbt ) ) then
+                         COMPUTE_TLT(i,j) = .false.
+                      else
+                         COMPUTE_TLT(i,j) = .true.
+
+                      endif
+
+                   enddo
+              enddo
+
+             do k=1,km-1
+
+             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+             do j=1,ny_block
+                   do i=1,nx_block
+
+                     WORK(i,j) = c0
+
+                      if ( COMPUTE_TLT(i,j)  .and.  K_SUB(i,j) == kbt  .and.  &
+                         K_START(i,j) < KMT_UNIFIED(i,j,bid)  .and.  K_START(i,j) == k ) then
+
+                         WORK(i,j) = max(SLA_SAVE_UNIFIED(i,j,kbt,k,bid), &
+                         SLA_SAVE_UNIFIED(i,j,ktp,k+1,bid)) * RB_UNIFIED(i,j,bid)
+
+                      endif
+
+                      if ( WORK(i,j) /= c0  .and.  &
+                         TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid) <  (zw_unified(k) - WORK(i,j)) ) then
+                         COMPUTE_TLT(i,j) = .false.
+                      endif
+
+
+                      if ( WORK(i,j) /= c0  .and.  &
+                         TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid) >= (zw_unified(k) - WORK(i,j)) ) then
+
+                         K_START(i,j) = K_START(i,j) + 1
+                         K_SUB(i,j)   = ktp
+
+                         TLT_UNIFIED%THICKNESS(i,j,bid) = zw_unified(k) - TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)
+                         TLT_UNIFIED%K_LEVEL(i,j,bid)   = k
+                         TLT_UNIFIED%ZTW(i,j,bid)       = 2
+
+                      endif
+                   enddo
+             enddo
+             enddo
+
+
+ end subroutine transition_layer_unified
 
  end module horizontal_mix_unified
 

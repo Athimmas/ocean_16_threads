@@ -1363,7 +1363,7 @@
 
         endif
 
-	
+
 
 !-----------------------------------------------------------------------
 !
@@ -1373,7 +1373,7 @@
 !-----------------------------------------------------------------------
        
  
-	if ( ( kappa_isop_type == kappa_type_vmhs           .or.    &
+        if ( ( kappa_isop_type == kappa_type_vmhs           .or.    &
                kappa_thic_type == kappa_type_vmhs           .or.    &
                kappa_isop_type == kappa_type_hdgr           .or.    &
                kappa_thic_type == kappa_type_hdgr           .or.    &
@@ -3770,22 +3770,10 @@
 #ifdef CCSMCOUPLED
 #ifndef _HIRES
 
-      if(my_task == master_task)then
-
-      do i=1,ny_block
-       do j=1,nx_block
-
-          if( COMPUTE_TLT(i,j) ) print *,"At DEPTH comp",i,j
-
-       enddo
-      enddo
-
-     endif
-
-
       if ( any(COMPUTE_TLT) ) then
         print *,"Incorrect DIABATIC_DEPTH value in TLT computation"
       endif
+
 #endif
 #endif
 
