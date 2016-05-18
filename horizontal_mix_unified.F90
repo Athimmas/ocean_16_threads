@@ -31,7 +31,7 @@
    use io_types, only: nml_in, nml_filename, stdout
    use hmix_del2, only: init_del2u, init_del2t, hdiffu_del2, hdifft_del2
    use hmix_del4, only: init_del4u, init_del4t, hdiffu_del4, hdifft_del4
-   use hmix_gm, only: hdifft_gm,diag_gm_bolus,kappa_isop_type,kappa_thic_type &
+   use hmix_gm, only: hdifft_gm,diag_gm_bolus,kappa_isop_type,kappa_thic_type, &
                       transition_layer_on
    use hmix_aniso, only: init_aniso, hdiffu_aniso
    use topostress, only: ltopostress
@@ -340,6 +340,11 @@
        KAPPA_THIC_UNIFIED         ! 3D thickness diffusion coefficient
                                   !  for top and bottom half of a grid cell
 
+      !dir$ attributes offload:mic :: BUOY_FREQ_SQ_UNIFIED
+      !dir$ attributes offload:mic :: SIGMA_TOPO_MASK_UNIFIED 
+      real (r8), dimension(:,:,:,:), allocatable, public :: &
+         BUOY_FREQ_SQ_UNIFIED,    & ! N^2 defined at level interfaces
+         SIGMA_TOPO_MASK_UNIFIED    ! bottom topography mask used with kappa_type_eg
 
 
 !variables realted to vmix_kpp
@@ -477,6 +482,8 @@
 
   allocate (KAPPA_LATERAL_UNIFIED(nx_block,ny_block,nblocks_clinic),  &
             KAPPA_VERTICAL_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
+
+   allocate (BUOY_FREQ_SQ_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
 
          KAPPA_ISOP_UNIFIED = KAPPA_ISOP
          KAPPA_THIC_UNIFIED = KAPPA_THIC
@@ -2429,6 +2436,55 @@
       
       SDL = KPP_HBLT_UNIFIED(:,:,bid)
       if(transition_layer_on) SDL = TLT_UNIFIED%INTERIOR_DEPTH(:,:,bid)
+
+        do k=1,km-1
+
+          !if ( k == 1 ) TEMP_K = max( -c2, TMIX(:,:,k,1) )
+
+          !TEMP_KP1 = max( -c2, TMIX(:,:,k+1,1) )
+
+          call state_unified( k, k+1, TMIX(:,:,k,1), TMIX(:,:,k,2), &
+                            this_block, DRHODT=RHOT, DRHODS=RHOS )
+
+          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60) 
+          do j=1,ny_block
+             do i=1,nx_block
+
+                if ( k == 1 ) TEMP_K(i,j) = max( -c2, TMIX(i,j,k,1) )
+
+                 TEMP_KP1(i,j) = max( -c2, TMIX(i,j,k+1,1) )
+
+
+
+                 if ( k < KMT_UNIFIED(i,j,bid) ) then
+                    BUOY_FREQ_SQ_UNIFIED(i,j,k,bid) = max( c0, - grav * dzwr_unified(k) &
+                        * ( RHOT(i,j) * ( TEMP_K(i,j) - TEMP_KP1(i,j) ) &
+                  + RHOS(i,j) * ( TMIX(i,j,k,  2) - TMIX(i,j,k+1,2) ) ) )
+                 endif
+
+                 TEMP_K(i,j) = TEMP_KP1(i,j)
+
+             enddo
+           enddo
+
+        enddo
+
+     do k=1,km-1
+       !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
+       do j=1,ny_block
+        do i=1,nx_block
+
+         if ( ( K_MIN(i,j) == km+1 ) .and. ( zw_unified(k) > SDL(i,j) ) .and.  &
+                ( k <= KMT_UNIFIED(i,j,bid) )  .and.                 &
+                ( BUOY_FREQ_SQ_UNIFIED(i,j,k,bid) > c0 ) ) then
+          BUOY_FREQ_SQ_REF(i,j) = BUOY_FREQ_SQ_UNIFIED(i,j,k,bid)
+          K_MIN(i,j) = k
+
+         endif
+
+        enddo
+       enddo
+      enddo
 
 
  end subroutine buoyancy_frequency_dependent_profile_unified
