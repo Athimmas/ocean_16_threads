@@ -94,7 +94,7 @@
       dt_option             ! method to determine tracer timestep size
 
    !dir$ attributes offload : mic :: nsteps_total 
-   integer (int_kind) :: &
+   integer (int_kind), public :: &
       stop_count        ,&! num of stop_option intervals before stop
                           !   OR date (yyyymmdd) at which model stops
       stop_iopt         ,&! integer value for stop_option

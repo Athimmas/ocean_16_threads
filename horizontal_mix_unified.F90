@@ -31,7 +31,7 @@
    use io_types, only: nml_in, nml_filename, stdout
    use hmix_del2, only: init_del2u, init_del2t, hdiffu_del2, hdifft_del2
    use hmix_del4, only: init_del4u, init_del4t, hdiffu_del4, hdifft_del4
-   use hmix_gm, only: init_gm, hdifft_gm,diag_gm_bolus
+   use hmix_gm, only: hdifft_gm,diag_gm_bolus,kappa_isop_type,kappa_thic_type
    use hmix_aniso, only: init_aniso, hdiffu_aniso
    use topostress, only: ltopostress
    use horizontal_mix, only:tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER
@@ -222,6 +222,17 @@
    real (r8), dimension(:,:,:,:), allocatable, public :: &
          FZTOP_SUBM_UNIFIED
 
+      !dir$ attributes offload:mic :: KAPPA_LATERAL_UNIFIED
+      real (r8), dimension(:,:,:), allocatable ,public :: &
+         KAPPA_LATERAL_UNIFIED      ! horizontal variation of KAPPA in cm^2/s
+
+      !dir$ attributes offload:mic :: KAPPA_VERTICAL_UNIFIED 
+      real (r8), dimension(:,:,:,:), allocatable ,public :: &
+         KAPPA_VERTICAL_UNIFIED     ! vertical variation of KAPPA (unitless),
+                            !  e.g. normalized buoyancy frequency dependent 
+                            !  profiles at the tracer grid points
+                            !  ( = N^2 / N_ref^2 ) OR a time-independent
+                            !  user-specified function
 
 
 !vertical mix related variables
@@ -296,6 +307,38 @@
       real (r8), dimension(:,:,:,:,:), allocatable , public :: &
          SLA_SAVE_UNIFIED             ! isopycnal slopes
 
+      integer (int_kind), parameter ::   &
+         kappa_type_const         = 1,   &
+         kappa_type_depth         = 2,   &
+         kappa_type_vmhs          = 3,   &
+         kappa_type_hdgr          = 4,   &
+         kappa_type_dradius       = 5,   &
+         kappa_type_bfreq         = 6,   &
+         kappa_type_bfreq_vmhs    = 7,   &
+         kappa_type_bfreq_hdgr    = 8,   &
+         kappa_type_bfreq_dradius = 9,   &
+         kappa_type_eg            = 10,  &
+         slope_control_tanh   = 1,       &
+         slope_control_notanh = 2,       &
+         slope_control_clip   = 3,       &
+         slope_control_Gerd   = 4,       &
+         kappa_freq_never           = 1, &
+         kappa_freq_every_time_step = 2, &
+         kappa_freq_once_a_day      = 3
+
+      !dir$ attributes offload:mic :: compute_kappa_unified
+      logical (log_kind), dimension(:), allocatable, public :: &
+         compute_kappa_unified        ! compute spatially varying coefficients
+                              !  this time step?
+
+      !dir$ attributes offload:mic :: KAPPA_ISOP_UNIFIED
+      !dir$ attributes offload:mic :: KAPPA_THIC_UNIFIED
+      real (r8), dimension(:,:,:,:,:), allocatable, public :: &
+       KAPPA_ISOP_UNIFIED, &      ! 3D isopycnal diffusion coefficient
+                                  !  for top and bottom half of a grid cell
+       KAPPA_THIC_UNIFIED         ! 3D thickness diffusion coefficient
+                                  !  for top and bottom half of a grid cell
+
 
 
 !variables realted to vmix_kpp
@@ -325,6 +368,7 @@
  use prognostic
  use vertical_mix
  use omp_lib
+ use hmix_gm
 
 
    print *,"Intializing unified grids"
@@ -425,7 +469,18 @@
 
   allocate (SLA_SAVE_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
   allocate (RB_UNIFIED(nx_block,ny_block,nblocks_clinic))
+  allocate (compute_kappa_unified(nblocks_clinic))
  
+  allocate(KAPPA_ISOP_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic),  &
+           KAPPA_THIC_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
+
+  allocate (KAPPA_LATERAL_UNIFIED(nx_block,ny_block,nblocks_clinic),  &
+            KAPPA_VERTICAL_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
+
+         KAPPA_ISOP_UNIFIED = KAPPA_ISOP
+         KAPPA_THIC_UNIFIED = KAPPA_THIC
+         KAPPA_LATERAL_UNIFIED = KAPPA_LATERAL
+         KAPPA_VERTICAL_UNIFIED = KAPPA_VERTICAL 
 
 !-----------------------------------------------------------------------
 !EOC
@@ -1937,6 +1992,32 @@
 
           call transition_layer_unified ( this_block )
 
+      if ( compute_kappa_unified(bid) ) then
+
+          if ( kappa_isop_type == kappa_type_bfreq          .or.  &
+               kappa_thic_type == kappa_type_bfreq          .or.  &
+               kappa_isop_type == kappa_type_bfreq_vmhs     .or.  &
+               kappa_thic_type == kappa_type_bfreq_vmhs     .or.  &
+               kappa_isop_type == kappa_type_bfreq_hdgr     .or.  &
+               kappa_thic_type == kappa_type_bfreq_hdgr     .or.  &
+               kappa_isop_type == kappa_type_bfreq_dradius  .or.  &
+               kappa_thic_type == kappa_type_bfreq_dradius )      &
+            call buoyancy_frequency_dependent_profile_unified (TMIX, this_block)
+
+          endif
+
+          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)
+          do kk_sub=ktp,kbt
+            do kk=1,km
+               do j=1,ny_block
+                   do i=1,nx_block
+                       KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid) =  KAPPA_LATERAL_UNIFIED(i,j,bid)&
+                                                         * KAPPA_VERTICAL_UNIFIED(i,j,kk,bid)
+                   enddo
+               enddo
+            enddo
+          enddo
+
 
      endif ! if k == 1 
 
@@ -2295,6 +2376,48 @@
 
 
  end subroutine transition_layer_unified
+
+ !dir$ attributes offload:mic :: buoyancy_frequency_dependent_profile_unified
+ subroutine buoyancy_frequency_dependent_profile_unified (TMIX, this_block)
+
+! !INPUT PARAMETERS:
+
+      real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+         TMIX                  ! tracers at all vertical levels
+                               !   at mixing time level
+
+      type (block), intent(in) :: &
+         this_block            ! block info for this sub block
+
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!     local variables
+!
+!-----------------------------------------------------------------------
+
+      integer (int_kind) :: &
+         k,        &          ! vertical loop index
+         bid,i,j              ! local block address for this sub block
+
+      integer (int_kind), dimension(nx_block,ny_block) :: &
+         K_MIN                ! k index below SDL 
+
+      real (r8), dimension(nx_block,ny_block) :: &
+         TEMP_K,           &  ! temperature at level k
+         TEMP_KP1,         &  ! temperature at level k+1
+         RHOT,             &  ! dRHO/dT
+         RHOS,             &  ! dRHO/dS
+         BUOY_FREQ_SQ_REF, &  ! reference (normalization) value
+                              !  of N^2
+         SDL                  ! surface diabatic layer (see below)
+
+      real (r8), dimension(nx_block,ny_block,km) :: &
+         BUOY_FREQ_SQ_NORM    ! normalized N^2 defined at level interfaces
+
+
+ end subroutine buoyancy_frequency_dependent_profile_unified
 
  end module horizontal_mix_unified
 
