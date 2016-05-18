@@ -2026,6 +2026,19 @@
             enddo
           enddo
 
+         !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)
+          do kk_sub=ktp,kbt
+            do kk=1,km
+               do j=1,ny_block
+                   do i=1,nx_block
+                       KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid) =  KAPPA_LATERAL_UNIFIED(i,j,bid)&
+                                                                 * KAPPA_VERTICAL_UNIFIED(i,j,kk,bid)
+                   enddo
+               enddo
+            enddo
+          enddo
+
+
 
      endif ! if k == 1 
 
@@ -2482,9 +2495,33 @@
 
          endif
 
+         if ( ( k >= K_MIN(i,j) ) .and. ( k < KMT_UNIFIED(i,j,bid) ) .and. &
+                  ( BUOY_FREQ_SQ_REF(i,j) /= c0 ) ) then
+                      BUOY_FREQ_SQ_NORM(i,j,k) =  &
+                      max( BUOY_FREQ_SQ_UNIFIED(i,j,k,bid) / BUOY_FREQ_SQ_REF(i,j),0.1_r8 )
+                      BUOY_FREQ_SQ_NORM(i,j,k) =  &
+                      min( BUOY_FREQ_SQ_NORM(i,j,k), c1 )
+         else
+             BUOY_FREQ_SQ_NORM(i,j,k) = c1
+         endif
+
+            enddo
+         enddo
+      enddo
+
+      do k=1,km-1
+       !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
+       do j=1,ny_block
+        do i=1,nx_block
+
+        if ( k == KMT_UNIFIED(i,j,bid)-1 ) then
+          BUOY_FREQ_SQ_NORM(i,j,k+1) = BUOY_FREQ_SQ_NORM(i,j,k)
+        endif
+
         enddo
        enddo
       enddo
+
 
 
  end subroutine buoyancy_frequency_dependent_profile_unified
