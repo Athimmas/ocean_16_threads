@@ -365,6 +365,19 @@
    real (r8), dimension(:), allocatable, public :: &
       zgrid_unified           ! depth at cell interfaces
 
+!varaibles from vertical mix
+
+   !dir$ attributes offload : mic :: VDC_UNIFIED
+   real (r8), dimension(:,:,:,:,:), allocatable, public, target :: &
+      VDC_UNIFIED         ! tracer diffusivity - public to allow
+                          ! possible modification by Gent-McWilliams
+                          ! horizontal mixing parameterization
+
+   !dir$ attributes offload:mic :: VDC_GM_UNIFIED
+   real (r8), dimension(:,:,:,:), allocatable, public, target :: &
+      VDC_GM_UNIFIED              ! Gent-McWilliams contribution to VDC
+
+
 
 !EOC
 !***********************************************************************
@@ -420,6 +433,8 @@
 
    allocate (KPP_HBLT_UNIFIED(nx_block,ny_block,nblocks_clinic), &
             BOLUS_SP_UNIFIED(nx_block,ny_block,nblocks_clinic))
+
+   allocate (VDC(nx_block,ny_block,0:km+1,2,nblocks_clinic))
 
    HXY_UNIFIED      = c0
    HYX_UNIFIED      = c0
@@ -503,6 +518,8 @@
 
   allocate (SF_SLX_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic),  &
             SF_SLY_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic))
+
+  allocate (VDC_GM(nx_block,ny_block,km,nblocks_clinic))
 
 
          KAPPA_ISOP_UNIFIED = KAPPA_ISOP
@@ -2352,6 +2369,52 @@
         call apply_vertical_profile_to_isop_hor_diff_unified ( this_block )
 
      endif ! if k == 1 
+
+
+      KMASK = merge(c1, c0, k < KMT_UNIFIED(:,:,bid))
+      
+
+!-----------------------------------------------------------------------
+!
+!     calculate effective vertical diffusion coefficient
+!     NOTE: it is assumed that VDC has been set before this
+!           in vmix_coeffs or something similar.
+!
+!     Dz(VDC * Dz(T)) where D is derivative rather than difference
+!     VDC = (Az(dz*Ax(KAPPA*HYX*SLX**2)) + Az(dz*Ay(KAPPA*HXY*SLY**2)))*
+!           dzw/TAREA
+!
+!-----------------------------------------------------------------------
+
+      
+      if ( k < km ) then
+
+      do j=1,ny_block
+         do i=1,nx_block
+
+         WORK1(i,j) = dzw_unified(k)*KMASK(i,j)*TAREA_R_UNIFIED(i,j,bid)*      &
+                 (dz_unified(k )*p25*KAPPA_ISOP_UNIFIED(i,j,kbt,k,  bid)*      &
+               (HYX_UNIFIED (i,j,bid) * SLX_UNIFIED(i,j,ieast, kbt,k,  bid)**2   &
+              + HYXW_UNIFIED(i,j,bid)*SLX_UNIFIED(i,j,iwest, kbt,k,  bid)**2   &
+              + HXY_UNIFIED (i,j,bid)*SLY_UNIFIED(i,j,jnorth,kbt,k,  bid)**2   &
+              + HXYS_UNIFIED(i,j,bid)*SLY_UNIFIED(i,j,jsouth,kbt,k,  bid)**2)  &
+                 +dz_unified(k+1)*p25*KAPPA_ISOP_UNIFIED(i,j,ktp,k+1,bid)*     &
+               (HYX_UNIFIED (i,j,bid)*SLX_UNIFIED(i,j,ieast, ktp,k+1,bid)**2   &
+              + HYXW_UNIFIED(i,j,bid)*SLX_UNIFIED(i,j,iwest, ktp,k+1,bid)**2   &
+              + HXY_UNIFIED (i,j,bid)*SLY_UNIFIED(i,j,jnorth,ktp,k+1,bid)**2   &
+              + HXYS_UNIFIED(i,j,bid)*SLY_UNIFIED(i,j,jsouth,ktp,k+1,bid)**2))
+          
+
+              do n=1,size(VDC_UNIFIED,DIM=4)
+                 VDC_GM_UNIFIED(i,j,k,bid) = WORK1(i,j)
+                 VDC_UNIFIED(i,j,k,n,bid) = VDC_UNIFIED(i,j,k,n,bid) + WORK1(i,j)
+              end do
+
+          enddo
+      enddo 
+       
+
+      end if
 
  end subroutine hdifft_gm_unified 
 
