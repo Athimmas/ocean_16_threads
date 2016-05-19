@@ -102,7 +102,7 @@
          compute_kappa        ! compute spatially varying coefficients
                               !  this time step?
 
-      logical (log_kind) ::   &
+      logical (log_kind),public ::   &
          diff_tapering,       &   ! different tapering for two diffusivities
          cancellation_occurs, &   ! specified choices for the isopycnal and
                                   !  thickness diffusion coefficients result in 

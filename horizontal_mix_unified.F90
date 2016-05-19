@@ -32,7 +32,8 @@
    use hmix_del2, only: init_del2u, init_del2t, hdiffu_del2, hdifft_del2
    use hmix_del4, only: init_del4u, init_del4t, hdiffu_del4, hdifft_del4
    use hmix_gm, only: hdifft_gm,diag_gm_bolus,kappa_isop_type,kappa_thic_type, &
-                      transition_layer_on
+                      transition_layer_on,ah_bolus,slope_control,diff_tapering,&
+                      slm_r,slm_b,use_const_ah_bkg_srfbl,ah_bkg_srfbl
    use hmix_aniso, only: init_aniso, hdiffu_aniso
    use topostress, only: ltopostress
    use horizontal_mix, only:tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER
@@ -148,9 +149,10 @@
 
    !dir$ attributes offload:mic :: DXT_UNIFIED
    !dir$ attributes offload:mic :: DYT_UNIFIED
-
+   !dir$ attributes offload:mic :: HUS_UNIFIED
+   !dir$ attributes offload:mic :: HUW_UNIFIED
    real (POP_r8), dimension(nx_block,ny_block,max_blocks_clinic), public :: &
-      DYT_UNIFIED, DXT_UNIFIED
+      DYT_UNIFIED, DXT_UNIFIED,HUS_UNIFIED,HUW_UNIFIED
 
       !*** dimension(1:km)
 
@@ -369,7 +371,7 @@
  use mix_submeso, only: TIME_SCALE,efficiency_factor,hor_length_scale, &
                         max_hor_grid_scale
  use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr,KMTE, KMT,&
-                   KMTN,zt,dzw,zw,DXT,DYT,HTN,HTE,TAREA_R
+                   KMTN,zt,dzw,zw,DXT,DYT,HTN,HTE,TAREA_R,HUS,HUW
  use vmix_kpp, only:zgrid
  use prognostic
  use vertical_mix
@@ -450,6 +452,8 @@
    HTE_UNIFIED = HTE
    HTN_UNIFIED = HTN
    TAREA_R_UNIFIED = TAREA_R
+   HUS_UNIFIED = HUS
+   HUW_UNIFIED = HUW
 
 
 !! initialization for mix_submeso
@@ -2037,6 +2041,288 @@
                enddo
             enddo
           enddo
+
+          !start_time = omp_get_wtime()
+          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)collapse(3)schedule(dynamic,4)      
+           do kk_sub=ktp,kbt
+            do kk=1,km
+             do j=1,ny_block
+              do i=1,nx_block
+                 KAPPA_THIC_UNIFIED(i,j,kk_sub,kk,bid) =  ah_bolus  &
+                                          * KAPPA_VERTICAL_UNIFIED(i,j,kk,bid)
+              enddo
+             enddo
+            enddo
+          enddo
+          !!$OMP END PARALLEL DO
+
+        do kk=1,km
+
+          kp1 = min(kk+1,km)
+          reference_depth(ktp) = zt_unified(kp1)
+          reference_depth(kbt) = zw_unified(kp1)
+          if ( kk == km )  reference_depth(ktp) = zw_unified(kp1)
+
+          do kk_sub = ktp,kbt 
+
+            kid = kk + kk_sub - 2
+
+!-----------------------------------------------------------------------
+!
+!     control KAPPA to reduce the isopycnal mixing near the
+!     ocean surface Large et al (1997), JPO, 27, pp 2418-2447.
+!     WORK1 = ratio between the depth of water parcel and
+!     the vertical displacement of isopycnal surfaces
+!     where the vertical displacement =/dz_botto/dz_bottomm
+!     Rossby radius * slope of isopycnal surfaces
+!
+!-----------------------------------------------------------------------
+
+             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,dzw,dz_bottom,zt)NUM_THREADS(60)
+             do j=1,ny_block
+                   do i=1,nx_block
+
+                       if ( transition_layer_on ) then
+                          SLA(i,j) = SLA_SAVE_UNIFIED(i,j,kk_sub,kk,bid)
+                       else
+                          SLA(i,j) = dzw_unified(kid)*sqrt(p5*(                                  &
+                                 (SLX_UNIFIED(i,j,1,kk_sub,kk,bid)**2                            & 
+                                + SLX_UNIFIED(i,j,2,kk_sub,kk,bid)**2)/DXT_UNIFIED(i,j,bid)**2   &
+                                + (SLY_UNIFIED(i,j,1,kk_sub,kk,bid)**2                           &
+                                + SLY_UNIFIED(i,j,2,kk_sub,kk,bid)**2)/DYT_UNIFIED(i,j,bid)**2)) &
+                                + eps
+                        endif
+
+                        TAPER1(i,j) = c1 
+                        if ( .not. transition_layer_on ) then
+
+                        if ( kk == 1 ) then
+                        dz_bottom = c0
+                        else
+                        dz_bottom = zt_unified(kk-1)
+                        endif
+
+                        if (slope_control == slope_control_tanh) then
+
+                        WORK1(i,j) = min(c1,zt_unified(kk)*RBR_UNIFIED(i,j,bid)/SLA(i,j))
+                        TAPER1(i,j) = p5*(c1+sin(pi*(WORK1(i,j)-p5)))
+
+!     use the Rossby deformation radius tapering
+!     only within the boundary layer
+
+                        TAPER1(i,j) = merge(TAPER1(i,j), c1,  &
+                               dz_bottom <= BL_DEPTH_UNIFIED(i,j,bid))
+
+                         else
+
+!     sine function is replaced by
+!     function = 4.*x*(1.-abs(x)) for |x|<0.5
+
+                         WORK1(i,j) = min(c1,zt_unified(kk)*RBR_UNIFIED(i,j,bid)/SLA(i,j))
+                         TAPER1(i,j) = (p5+c2*(WORK1(i,j)-p5)*(c1-abs(WORK1(i,j)-p5)))
+
+                         TAPER1(i,j) = merge(TAPER1(i,j), c1,  &
+                                  dz_bottom <= BL_DEPTH_UNIFIED(i,j,bid))
+
+                         endif
+
+                         endif
+
+
+!-----------------------------------------------------------------------
+!
+!     control KAPPA for numerical stability
+!
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!
+!     methods to control slope
+!
+!-----------------------------------------------------------------------
+      
+                        TAPER2(i,j) = c1
+                        TAPER3(i,j) = c1
+
+
+                         select case (slope_control)
+                         case (slope_control_tanh)
+
+!     method by Danabasoglu & Mcwilliams (1995)
+
+                         TAPER2(i,j) = merge(p5*  &
+                          (c1-tanh(c10*SLA(i,j)/slm_r-c4)), c0, SLA(i,j) < slm_r)
+
+                         if ( diff_tapering ) then
+                          TAPER3(i,j) = merge(p5*  &
+                          (c1-tanh(c10*SLA(i,j)/slm_b-c4)), c0, SLA(i,j) < slm_b)
+                         else
+                          TAPER3(i,j) = TAPER2(i,j)
+                         endif
+
+                         case (slope_control_notanh)
+
+!     similar to DM95 except replacing tanh by
+!     function = x*(1.-0.25*abs(x)) for |x|<2
+!              = sign(x)            for |x|>2
+!     (faster than DM95)
+
+
+                         if (SLA(i,j) > 0.2_r8*slm_r .and. &
+                             SLA(i,j) < 0.6_r8*slm_r) then
+                             TAPER2(i,j) = &
+                             p5*(c1-(2.5_r8*SLA(i,j)/slm_r-c1)*  &
+                             (c4-abs(c10*SLA(i,j)/slm_r-c4)))
+                         else if (SLA(i,j) >= 0.6_r8*slm_r) then
+                             TAPER2(i,j) = c0
+                         endif
+
+
+                         if ( diff_tapering ) then
+
+                           if (SLA(i,j) > 0.2_r8*slm_b .and. &
+                              SLA(i,j) < 0.6_r8*slm_b) then
+                              TAPER3(i,j) = &
+                              p5*(c1-(2.5_r8*SLA(i,j)/slm_b-c1)* &
+                              (c4-abs(c10*SLA(i,j)/slm_b-c4)))
+                           else if (SLA(i,j) >= 0.6_r8*slm_b) then
+                              TAPER3(i,j) = c0
+                         endif
+
+                         else
+                              TAPER3(i,j) = TAPER2(i,j)
+                         endif
+
+                         case (slope_control_clip)
+
+!     slope clipping
+
+                         do n=1,2
+
+                         if (abs(SLX_UNIFIED(i,j,n,kk_sub,kk,bid)  &
+                            * dzw_unified(kid) / HUS_UNIFIED(i,j,bid)) > slm_r) then
+                            SLX_UNIFIED(i,j,n,kk_sub,kk,bid) =             &
+                                        sign(slm_r * HUS_UNIFIED(i,j,bid)  &
+                                           * dzwr_unified(kid),            &
+                                        SLX_UNIFIED(i,j,n,kk_sub,kk,bid))
+                         endif
+                         enddo
+
+                         do n=1,2
+
+                         if (abs(SLY_UNIFIED(i,j,n,kk_sub,kk,bid)  &
+                          * dzw_unified(kid) / HUW_UNIFIED(i,j,bid)) > slm_r) then  
+                          SLY_UNIFIED(i,j,n,kk_sub,kk,bid) =             &
+                                  sign(slm_r * HUW_UNIFIED(i,j,bid)  &
+                                     * dzwr_unified(kid),            &
+                                  SLY_UNIFIED(i,j,n,kk_sub,kk,bid))
+                          endif
+                          enddo
+
+                          case (slope_control_Gerd)
+
+!     method by Gerdes et al (1991)
+
+
+                          if (SLA(i,j) > slm_r)  &
+                             TAPER2(i,j) = (slm_r/SLA(i,j))**2
+
+
+                          if (diff_tapering) then
+
+                             if (SLA(i,j) > slm_b)  &
+                                TAPER3(i,j) = (slm_b/SLA(i,j))**2
+
+                             else
+                                TAPER3(i,j) = TAPER2(i,j)
+                             endif
+
+                          end select
+
+!-----------------------------------------------------------------------
+!
+!     control KAPPA for numerical stability
+!
+!-----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!
+!     methods to control slope
+!
+!-----------------------------------------------------------------------
+
+                      if ( transition_layer_on ) then
+                           TAPER2(i,j) = merge(c1, TAPER2(i,j), reference_depth(kk_sub) &
+                                                         <= TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid))
+                           TAPER3(i,j) = merge(c1, TAPER3(i,j), reference_depth(kk_sub) &
+                                                         <= TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid))
+                      endif
+
+                       if ( transition_layer_on  .and.  use_const_ah_bkg_srfbl ) then
+
+                           HOR_DIFF_UNIFIED(i,j,kk_sub,kk,bid) = ah_bkg_srfbl
+
+                       else if ( transition_layer_on .and.               &
+                               ( .not. use_const_ah_bkg_srfbl      .or.  &
+                                 kappa_isop_type == kappa_type_eg  .or.  &
+                                 kappa_thic_type == kappa_type_eg ) ) then
+
+                           HOR_DIFF_UNIFIED(i,j,kk_sub,kk,bid) = KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid) 
+
+                       else
+
+                       if ( .not. ( kk == 1 .and. kk_sub == ktp ) ) then 
+
+                          if ( use_const_ah_bkg_srfbl ) then 
+                              HOR_DIFF_UNIFIED(i,j,kk_sub,kk,bid) =                                 &
+                                   merge( ah_bkg_srfbl * (c1 - TAPER1(i,j) * TAPER2(i,j))   &
+                                          * KAPPA_VERTICAL_UNIFIED(i,j,kk,bid),                     &
+                                           c0, dz_bottom <= BL_DEPTH_UNIFIED(i,j,bid) )
+                          else
+                              HOR_DIFF_UNIFIED(i,j,kk_sub,kk,bid) =         &
+                              merge( KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid)  &
+                               * (c1 - TAPER1(i,j) * TAPER2(i,j)),  &
+                              c0, dz_bottom <= BL_DEPTH_UNIFIED(i,j,bid) )
+                          endif
+
+                       endif
+
+                       endif
+
+                      KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid) =  &
+                      TAPER1(i,j) * TAPER2(i,j) * KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid)
+
+                      KAPPA_THIC_UNIFIED(i,j,kk_sub,kk,bid) =  &
+                      TAPER1(i,j) * TAPER3(i,j) * KAPPA_THIC_UNIFIED(i,j,kk_sub,kk,bid)
+
+             
+                   enddo
+             enddo
+
+
+          end do  ! end of kk_sub loop
+
+
+!-----------------------------------------------------------------------
+!
+!     impose the boundary conditions by setting KAPPA=0
+!     in the quarter cells adjacent to rigid boundaries.
+!     bottom B.C.s are considered within the kk-loop.
+!
+!-----------------------------------------------------------------------
+
+!     B.C. at the bottom
+
+             do j=1,ny_block
+                   do i=1,nx_block
+
+                       if (kk == KMT_UNIFIED(i,j,bid)) then
+                          KAPPA_ISOP_UNIFIED(i,j,kbt,kk,bid) = c0
+                          KAPPA_THIC_UNIFIED(i,j,kbt,kk,bid) = c0
+                       endif
+
+                   enddo
+              enddo
+ 
+        enddo              ! end of kk-loop
 
 
 
