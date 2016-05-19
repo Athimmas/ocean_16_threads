@@ -2349,7 +2349,7 @@
 
         call merged_streamfunction_unified ( this_block )
 
-        !call apply_vertical_profile_to_isop_hor_diff ( this_block )
+        call apply_vertical_profile_to_isop_hor_diff_unified ( this_block )
 
      endif ! if k == 1 
 
@@ -3200,6 +3200,130 @@
 
 
  end subroutine merged_streamfunction_unified
+
+!***********************************************************************
+!BOP
+! !IROUTINE: apply_vertical_profile_to_isop_hor_diff 
+! !INTERFACE:
+
+      !dir$ attributes offload:mic :: apply_vertical_profile_to_isop_hor_diff_unified   
+      subroutine apply_vertical_profile_to_isop_hor_diff_unified ( this_block ) 
+
+! !DESCRIPTION:
+!  Apply vertical tapers to KAPPA_ISOP and HOR_DIFF based on their
+!  vertical location with respect to the diabatic, transition, and
+!  adiabatic regions.
+!
+! !REVISION HISTORY:
+!  same as module
+
+! !INPUT PARAMETERS:
+
+      type (block), intent(in) :: &
+         this_block          ! block info for this sub block
+
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!     local variables
+!
+!-----------------------------------------------------------------------
+
+      integer (int_kind) :: &
+         k, kk,     &        ! loop indices
+         bid,i,j             ! local block address for this sub block
+
+      real (r8), dimension(2) :: &
+         reference_depth
+
+      bid = this_block%local_id
+
+!-----------------------------------------------------------------------
+!
+!     start of tapering
+!
+!-----------------------------------------------------------------------
+      !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j,k,kk,reference_depth)num_threads(60)
+      do k=1,km
+
+        reference_depth(ktp) = zt_unified(k) - p25 * dz_unified(k)
+        reference_depth(kbt) = zt_unified(k) + p25 * dz_unified(k)
+
+        do kk=ktp,kbt
+
+!-----------------------------------------------------------------------
+!
+!     diabatic region: no isopycnal diffusion 
+!
+!-----------------------------------------------------------------------
+           do j=1,ny_block
+              do i=1,nx_block
+
+                 if ( reference_depth(kk) <= TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)  &
+                 .and.  k <= KMT_UNIFIED(i,j,bid) ) then
+
+                    KAPPA_ISOP_UNIFIED(i,j,kk,k,bid) = c0
+
+                endif
+  
+
+!-----------------------------------------------------------------------
+!
+!      transition layer: a linear combination of isopcynal and horizontal
+!      diffusion coefficients 
+!
+!-----------------------------------------------------------------------
+
+                if( reference_depth(kk) > TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)   &
+              .and.  reference_depth(kk) <= TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid) &
+              .and.  k <= KMT_UNIFIED(i,j,bid)  .and.                           &
+                     TLT_UNIFIED%THICKNESS(i,j,bid) > eps ) then
+
+                     HOR_DIFF_UNIFIED(i,j,kk,k,bid) = ( TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)  &
+                           - reference_depth(kk) ) * HOR_DIFF_UNIFIED(i,j,kk,k,bid)  &
+                                 / TLT_UNIFIED%THICKNESS(i,j,bid)
+
+                     KAPPA_ISOP_UNIFIED(i,j,kk,k,bid) = ( reference_depth(kk)        &
+                                            - TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid) )  &
+                          * KAPPA_ISOP_UNIFIED(i,j,kk,k,bid) / TLT_UNIFIED%THICKNESS(i,j,bid)
+
+                 endif
+
+!-----------------------------------------------------------------------
+!
+!     interior region: no horizontal diffusion
+!
+!-----------------------------------------------------------------------
+
+                 if ( reference_depth(kk) > TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)  &
+                  .and.  k <= KMT_UNIFIED(i,j,bid) ) then
+
+                          HOR_DIFF_UNIFIED(i,j,kk,k,bid) = c0
+                 endif
+
+              enddo
+           enddo
+
+        enddo  ! end of kk-loop
+
+      enddo    ! end of k-loop
+
+
+     !print *,KAPPA_ISOP(45,45,1,45,bid),HOR_DIFF(45,45,1,45,bid) 
+     !if(my_task==master_task)then
+
+       !open(unit=10,file="/home/aketh/ocn_correctness_data/changed.txt",status="unknown",position="append",action="write",form="unformatted")
+       !write(10),HOR_DIFF,KAPPA_ISOP
+       !close(10)
+
+     !endif
+
+
+!-----------------------------------------------------------------------
+!EOC
+
+      end subroutine apply_vertical_profile_to_isop_hor_diff_unified
 
  end module horizontal_mix_unified
 
