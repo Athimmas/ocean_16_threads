@@ -349,6 +349,16 @@
          SIGMA_TOPO_MASK_UNIFIED    ! bottom topography mask used with kappa_type_eg
 
 
+      !dir$ attributes offload:mic :: FZTOP_UNIFIED
+      real (r8), dimension(:,:,:,:), allocatable,public :: &
+         FZTOP_UNIFIED              ! vertical flux
+
+      !dir$ attributes offload:mic :: SF_SLX_UNIFIED
+      !dir$ attributes offload:mic :: SF_SLY_UNIFIED
+      real (r8), dimension(:,:,:,:,:,:), allocatable ,public :: &
+         SF_SLX_UNIFIED, SF_SLY_UNIFIED       ! components of the merged streamfunction
+
+
 !variables realted to vmix_kpp
 
    !dir$ attributes offload : mic :: zgrid_unified
@@ -487,12 +497,19 @@
   allocate (KAPPA_LATERAL_UNIFIED(nx_block,ny_block,nblocks_clinic),  &
             KAPPA_VERTICAL_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
 
-   allocate (BUOY_FREQ_SQ_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
+  allocate (BUOY_FREQ_SQ_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
+
+  allocate (FZTOP_UNIFIED(nx_block,ny_block,nt,nblocks_clinic))
+
+  allocate (SF_SLX_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic),  &
+            SF_SLY_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic))
+
 
          KAPPA_ISOP_UNIFIED = KAPPA_ISOP
          KAPPA_THIC_UNIFIED = KAPPA_THIC
          KAPPA_LATERAL_UNIFIED = KAPPA_LATERAL
-         KAPPA_VERTICAL_UNIFIED = KAPPA_VERTICAL 
+         KAPPA_VERTICAL_UNIFIED = KAPPA_VERTICAL
+ 
 
 !-----------------------------------------------------------------------
 !EOC
@@ -579,7 +596,7 @@
         !print *,"time at tracer_diffs 1 is ",end_time - start_time   
       endif
 
-      !if (k == 1) then
+      if (k == 1) then
          !start_time = omp_get_wtime()
 
          call hdifft_gm_unified(1, HDTK_BUF(:,:,:,1), TMIX, UMIX, VMIX, tavg_HDIFE_TRACER, &
@@ -595,7 +612,7 @@
 
          !print *,"time at hdifft_gm combined is ",end_time - start_time 
                     
-      !endif
+      endif
 
       !start_time = omp_get_wtime()  
       !HDTK = HDTK_BUF(:,:,:,k)
@@ -2324,7 +2341,15 @@
  
         enddo              ! end of kk-loop
 
+        KAPPA_ISOP_UNIFIED(:,:,ktp,1,bid) = c0
+        KAPPA_THIC_UNIFIED(:,:,ktp,1,bid) = c0
+        
 
+        FZTOP_UNIFIED(:,:,:,bid) = c0        ! zero flux B.C. at the surface
+
+        call merged_streamfunction_unified ( this_block )
+
+        !call apply_vertical_profile_to_isop_hor_diff ( this_block )
 
      endif ! if k == 1 
 
@@ -2811,6 +2836,370 @@
 
 
  end subroutine buoyancy_frequency_dependent_profile_unified
+
+      !dir$ attributes offload:mic :: merged_streamfunction_unified
+ subroutine merged_streamfunction_unified ( this_block )
+
+! !DESCRIPTION:
+!  Construct a merged streamfunction that has the appropriate
+!  behavior in the surface diabatic region, transition layer, and
+!  adiabatic interior
+!
+! !REVISION HISTORY:
+!  same as module
+
+! !INPUT PARAMETERS:
+
+      type (block), intent(in) :: &
+         this_block          ! block info for this sub block
+
+!EOP
+!BOC
+!-----------------------------------------------------------------------
+!
+!     local variables
+!
+!-----------------------------------------------------------------------
+
+      integer (int_kind) :: &
+         k, kk,     &        ! loop indices
+         bid,i,j,temp        ! local block address for this sub block
+ 
+      real (r8), dimension(nx_block,ny_block,2) :: &
+         WORK1, WORK2, WORK3, WORK4   ! work arrays
+
+      real (r8), dimension(nx_block,ny_block) :: &
+         WORK2_NEXT, WORK4_NEXT       ! WORK2 or WORK4 at next level
+
+      real (r8), dimension(nx_block,ny_block) :: &
+         WORK5, WORK6, WORK7          ! more work arrays
+
+      logical (log_kind), dimension(nx_block,ny_block) :: &
+         LMASK               ! flag
+
+      real (r8), dimension(2) :: &
+         reference_depth              ! zt or zw
+
+      !real (r8) :: &
+      !   start_time,end_time
+
+
+
+!-----------------------------------------------------------------------
+!
+!     initialize various quantities
+!
+!-----------------------------------------------------------------------
+
+
+      !start_time = omp_get_wtime() 
+      bid = this_block%local_id
+
+     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(k,kk,temp,j,i)num_threads(60)collapse(4)
+     do k=1,km
+        do kk=1,2
+           do temp=1,2 
+              do j=1,ny_block
+                 !!dir$ vector aligned
+                 !!dir$ ivdep
+                 do i=1,nx_block
+ 
+                    SF_SLX_UNIFIED(i,j,temp,kk,k,bid) = c0
+                    SF_SLY_UNIFIED(i,j,temp,kk,k,bid) = c0
+
+                 enddo
+              enddo
+            enddo
+          enddo
+      enddo   
+
+      !end_time = omp_get_wtime()
+      !print *,end_time - start_time
+
+
+      WORK1 = c0
+      WORK2 = c0
+      WORK3 = c0
+      WORK4 = c0
+      WORK5 = c0
+      WORK6 = c0
+      WORK7 = c0
+      WORK2_NEXT = c0
+      WORK4_NEXT = c0
+ 
+
+
+!-----------------------------------------------------------------------
+!
+!     compute the interior streamfunction and its first derivative at the
+!     INTERIOR_DEPTH level. WORK1 and WORK2 contain the streamfunction
+!     and its first derivative, respectively, for the zonal component
+!     for the east and west sides of a grid cell. WORK3 and WORK4 are
+!     the corresponding fields for the meridional component for the
+!     north and south sides of a grid cell. Note that these definitions
+!     include a "dz". Also, the first derivative computations assume 
+!     that the streamfunctions are located in the middle of the top or
+!     bottom half of a grid cell, hence a factor of two in WORK2 and
+!     WORK4 calculations. 
+!
+!-----------------------------------------------------------------------
+
+      !start_time = omp_get_wtime()   
+   
+      do k=1,km-1
+
+        do kk=1,2
+ 
+          !!$OMP PARALLEL DO PRIVATE(I,J)DEFAULT(SHARED)NUM_THREADS(60) 
+          do j=1,ny_block
+           do i=1,nx_block
+
+ 
+            LMASK(i,j) = TLT_UNIFIED%K_LEVEL(i,j,bid) == k  .and.            &
+                       TLT_UNIFIED%K_LEVEL(i,j,bid) < KMT_UNIFIED(i,j,bid)  .and.  &
+                       TLT_UNIFIED%ZTW(i,j,bid) == 1
+
+
+            if ( LMASK(i,j) ) then 
+
+             WORK1(i,j,kk) =  KAPPA_THIC_UNIFIED(i,j,kbt,k,bid)  &
+                           * SLX_UNIFIED(i,j,kk,kbt,k,bid) * dz_unified(k)
+
+             WORK2(i,j,kk) = c2 * dzwr_unified(k) * ( WORK1(i,j,kk)            &
+              - KAPPA_THIC_UNIFIED(i,j,ktp,k+1,bid) * SLX_UNIFIED(i,j,kk,ktp,k+1,bid) &
+                                            * dz_unified(k+1) )
+
+             WORK2_NEXT(i,j) = c2 * ( &
+              KAPPA_THIC_UNIFIED(i,j,ktp,k+1,bid) * SLX_UNIFIED(i,j,kk,ktp,k+1,bid) - &
+              KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid) * SLX_UNIFIED(i,j,kk,kbt,k+1,bid) )
+
+             WORK3(i,j,kk) =  KAPPA_THIC_UNIFIED(i,j,kbt,k,bid)  &
+                           * SLY_UNIFIED(i,j,kk,kbt,k,bid) * dz_unified(k)
+
+             WORK4(i,j,kk) = c2 * dzwr_unified(k) * ( WORK3(i,j,kk)            &
+              - KAPPA_THIC_UNIFIED(i,j,ktp,k+1,bid) * SLY_unified(i,j,kk,ktp,k+1,bid) &
+                                            * dz_unified(k+1) )
+
+             WORK4_NEXT(i,j) = c2 * ( &
+              KAPPA_THIC_UNIFIED(i,j,ktp,k+1,bid) * SLY_UNIFIED(i,j,kk,ktp,k+1,bid) - &
+              KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid) * SLY_UNIFIED(i,j,kk,kbt,k+1,bid) )
+
+            endif
+
+            if( LMASK(i,j) .and. abs( WORK2_NEXT(i,j) ) < abs( WORK2(i,j,kk) ) )then 
+
+             WORK2(i,j,kk) = WORK2_NEXT(i,j)
+
+            endif
+
+           if ( LMASK(i,j) .and. abs( WORK4_NEXT(i,j) ) < abs( WORK4(i,j,kk ) )) then 
+             WORK4(i,j,kk) = WORK4_NEXT(i,j)
+           endif
+
+          LMASK(i,j) = TLT_UNIFIED%K_LEVEL(i,j,bid) == k  .and.           &
+                       TLT_UNIFIED%K_LEVEL(i,j,bid) < KMT_UNIFIED(i,j,bid)  .and. &
+                       TLT_UNIFIED%ZTW(i,j,bid) == 2
+
+          if ( LMASK(i,j) ) then
+
+            WORK1(i,j,kk) =  KAPPA_THIC_UNIFIED(i,j,ktp,k+1,bid)     & 
+                           * SLX_UNIFIED(i,j,kk,ktp,k+1,bid)
+
+            WORK2(i,j,kk) =  c2 * ( WORK1(i,j,kk)                 &
+                           - ( KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid)        &
+                              * SLX_UNIFIED(i,j,kk,kbt,k+1,bid) ) )
+
+            WORK1(i,j,kk) = WORK1(i,j,kk) * dz_unified(k+1)
+
+            WORK3(i,j,kk) =  KAPPA_THIC_UNIFIED(i,j,ktp,k+1,bid)     &
+                           * SLY_UNIFIED(i,j,kk,ktp,k+1,bid)
+
+            WORK4(i,j,kk) =  c2 * ( WORK3(i,j,kk)                 &
+                           - ( KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid)        &
+                              * SLY_UNIFIED(i,j,kk,kbt,k+1,bid) ) )
+
+            WORK3(i,j,kk) = WORK3(i,j,kk) * dz_unified(k+1)
+
+            endif
+ 
+          LMASK(i,j) = LMASK(i,j) .and. TLT_UNIFIED%K_LEVEL(i,j,bid) + 1 < KMT_UNIFIED(i,j,bid)
+
+          if (k.lt.km-1) then ! added to avoid out of bounds access
+
+            if( LMASK(i,j) ) then
+
+              WORK2_NEXT(i,j) = c2 * dzwr_unified(k+1) * ( &
+                KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid) * SLX_UNIFIED(i,j,kk,kbt,k+1,bid) * dz_unified(k+1)- &
+                KAPPA_THIC_UNIFIED(i,j,ktp,k+2,bid) * SLX_UNIFIED(i,j,kk,ktp,k+2,bid) * dz_unified(k+2))
+
+              WORK4_NEXT(i,j) = c2 * dzwr_unified(k+1) * ( &
+                KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid) * SLY_UNIFIED(i,j,kk,kbt,k+1,bid) * dz_unified(k+1)- &
+                KAPPA_THIC_UNIFIED(i,j,ktp,k+2,bid) * SLY_UNIFIED(i,j,kk,ktp,k+2,bid) * dz_unified(k+2))
+
+              endif 
+
+          end if
+             
+          if( LMASK(i,j) .and. abs( WORK2_NEXT(i,j) ) < abs( WORK2(i,j,kk) ) ) &
+            WORK2(i,j,kk) = WORK2_NEXT(i,j)
+
+          if( LMASK(i,j) .and. abs(WORK4_NEXT(i,j)) < abs(WORK4(i,j,kk)) ) &
+            WORK4(i,j,kk) = WORK4_NEXT(i,j)
+
+             enddo
+          enddo
+          !!$OMP END PARALLEL DO
+        enddo
+
+      enddo
+
+!-----------------------------------------------------------------------
+!
+!     compute the depth independent interpolation factors used in the 
+!     linear and quadratic interpolations within the diabatic and 
+!     transition regions, respectively.
+!
+!-----------------------------------------------------------------------
+
+          do j=1,ny_block
+             do i=1,nx_block
+
+                WORK5(i,j) = c0
+                if (KMT_UNIFIED(i,j,bid) /= 0) then
+                   WORK5(i,j) = c1 / ( c2 * TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid) &
+                   + TLT_UNIFIED%THICKNESS(i,j,bid) )
+ 
+                endif 
+
+                WORK6(i,j) = c0
+                if ((KMT_UNIFIED(i,j,bid) /= 0) .AND. (TLT_UNIFIED%THICKNESS(i,j,bid) > eps))then
+                   WORK6(i,j) = WORK5(i,j) / TLT_UNIFIED%THICKNESS(i,j,bid)
+      
+                endif
+
+             enddo
+          enddo
+
+      !start_time = omp_get_wtime()
+      !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j,k,kk,reference_depth)num_threads(60)SCHEDULE(DYNAMIC,6) 
+      do k=1,km
+
+        reference_depth(ktp) = zt_unified(k) - p25 * dz_unified(k)
+        reference_depth(kbt) = zt_unified(k) + p25 * dz_unified(k)
+
+        do kk=ktp,kbt
+
+!-----------------------------------------------------------------------
+!
+!     diabatic region: use linear interpolation (in streamfunction) 
+!
+!-----------------------------------------------------------------------
+     
+          do j=1,ny_block
+             do i=1,nx_block
+
+
+                if ( reference_depth(kk) <= TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)  &
+                       .and.  k <= KMT_UNIFIED(i,j,bid) ) then
+
+                       SF_SLX_UNIFIED(i,j,1,kk,k,bid) = reference_depth(kk) * WORK5(i,j)  &
+                             * ( c2 * WORK1(i,j,1) + TLT_UNIFIED%THICKNESS(i,j,bid)       &
+                                * WORK2(i,j,1) )
+
+                       SF_SLX_UNIFIED(i,j,2,kk,k,bid) = reference_depth(kk) * WORK5(i,j)  &
+                              * ( c2 * WORK1(i,j,2) + TLT_UNIFIED%THICKNESS(i,j,bid)      &
+                                * WORK2(i,j,2) )
+
+                       SF_SLY_UNIFIED(i,j,1,kk,k,bid) = reference_depth(kk) * WORK5(i,j)  &
+                             * ( c2 * WORK3(i,j,1) + TLT_UNIFIED%THICKNESS(i,j,bid)       &
+                                * WORK4(i,j,1) )
+
+                       SF_SLY_UNIFIED(i,j,2,kk,k,bid) = reference_depth(kk) * WORK5(i,j)  &
+                             * ( c2 * WORK3(i,j,2) + TLT_UNIFIED%THICKNESS(i,j,bid)       &
+                                * WORK4(i,j,2) )
+     
+                endif
+      
+
+!-----------------------------------------------------------------------
+!
+!     transition layer: use quadratic interpolation (in streamfunction) 
+!
+!-----------------------------------------------------------------------
+
+
+                 if ( reference_depth(kk) > TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)   &
+                .and.  reference_depth(kk) <= TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid) &
+                .and.  k <= KMT_UNIFIED(i,j,bid) ) then
+
+                       WORK7(i,j) = (TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)  &
+                                       - reference_depth(kk))**2
+
+                      SF_SLX_UNIFIED(i,j,1,kk,k,bid) = - WORK7(i,j) * WORK6(i,j)  &
+                          * ( WORK1(i,j,1) + TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)  &
+                             * WORK2(i,j,1) )                             &
+                         + reference_depth(kk) * WORK5(i,j)               &
+                          * ( c2 * WORK1(i,j,1) + TLT_UNIFIED%THICKNESS(i,j,bid)  &
+                                     * WORK2(i,j,1) )
+
+                      SF_SLX_UNIFIED(i,j,2,kk,k,bid) = - WORK7(i,j) * WORK6(i,j)  &
+                          * ( WORK1(i,j,2) + TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)  &
+                             * WORK2(i,j,2) )                             &
+                         + reference_depth(kk) * WORK5(i,j)               &
+                          * ( c2 * WORK1(i,j,2) + TLT_UNIFIED%THICKNESS(i,j,bid)  &
+                                       * WORK2(i,j,2) )
+
+                      SF_SLY_UNIFIED(i,j,1,kk,k,bid) = - WORK7(i,j) * WORK6(i,j)  &
+                          * ( WORK3(i,j,1) + TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)  &
+                             * WORK4(i,j,1) )                             &
+                         + reference_depth(kk) * WORK5(i,j)               &
+                          * ( c2 * WORK3(i,j,1) + TLT_UNIFIED%THICKNESS(i,j,bid)  &
+                             * WORK4(i,j,1) )
+
+                      SF_SLY_UNIFIED(i,j,2,kk,k,bid) = - WORK7(i,j) * WORK6(i,j)  &
+                          * ( WORK3(i,j,2) + TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)  &
+                             * WORK4(i,j,2) )                             &
+                         + reference_depth(kk) * WORK5(i,j)               &
+                          * ( c2 * WORK3(i,j,2) + TLT_UNIFIED%THICKNESS(i,j,bid)  &
+                             * WORK4(i,j,2) )
+ 
+                  endif
+
+
+!-----------------------------------------------------------------------
+!
+!     interior, adiabatic region: no interpolation is needed. note that
+!     "dzw" is introduced here, too, for consistency. 
+!
+!-----------------------------------------------------------------------
+
+                 if ( reference_depth(kk) > TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)  & 
+                       .and.  k <= KMT_UNIFIED(i,j,bid) ) then
+
+                     SF_SLX_UNIFIED(i,j,1,kk,k,bid) =  KAPPA_THIC_UNIFIED(i,j,kk,k,bid)  &
+                                       * SLX_UNIFIED(i,j,1,kk,k,bid) * dz_unified(k)
+
+                     SF_SLX_UNIFIED(i,j,2,kk,k,bid) =  KAPPA_THIC_UNIFIED(i,j,kk,k,bid)  &
+                                       * SLX_UNIFIED(i,j,2,kk,k,bid) * dz_unified(k)
+
+                     SF_SLY_UNIFIED(i,j,1,kk,k,bid) =  KAPPA_THIC_UNIFIED(i,j,kk,k,bid)  &
+                                       * SLY_UNIFIED(i,j,1,kk,k,bid) * dz_unified(k)
+
+                     SF_SLY_UNIFIED(i,j,2,kk,k,bid) =  KAPPA_THIC_UNIFIED(i,j,kk,k,bid)  &
+                                       * SLY_UNIFIED(i,j,2,kk,k,bid) * dz_unified(k)
+
+                endif
+
+             enddo
+          enddo
+
+        enddo  ! end of kk-loop
+
+      enddo    ! end of k-loop
+
+
+
+ end subroutine merged_streamfunction_unified
 
  end module horizontal_mix_unified
 
