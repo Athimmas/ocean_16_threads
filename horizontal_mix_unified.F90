@@ -2719,6 +2719,27 @@
                        * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,km,n,bid) ) )
 
 
+                WORK3prev = WORK3prev                          &
+                    + ( c1                                             &
+                    * ( SF_SLX_UNIFIED(i  ,j  ,ieast ,ktp,km  ,bid)            &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,km  ,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jnorth,ktp,km  ,bid)            &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,km  ,n,bid)     &
+                      + SF_SLX_UNIFIED(i  ,j  ,iwest ,ktp,km  ,bid)            &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,km  ,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jsouth,ktp,km  ,bid)            &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,km,n,bid) ) )
+
+
+                 KMASKprev = merge(c1, c0, km-1 < KMT_UNIFIED(i,j,bid))
+
+                 fzprev = -KMASKprev * p25 * WORK3prev
+
+
+                 GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &
+                              + FY(i,j,n) - FY(i,j-1,n)  &
+                        + fzprev )*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)
+
 
             enddo   
            enddo
