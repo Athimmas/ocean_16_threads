@@ -3752,7 +3752,20 @@
                    enddo
               enddo
       enddo
-   
+  
+      if(my_task == master_task)then
+
+      do i=1,ny_block
+       do j=1,nx_block
+
+          if( COMPUTE_TLT(i,j) ) print *,i,j
+
+       enddo
+      enddo
+
+     endif
+
+ 
 
 #ifdef CCSMCOUPLED
 #ifndef _HIRES
