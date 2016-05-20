@@ -2678,6 +2678,51 @@
                enddo
             enddo   
 
+          else                 ! k = km
+
+          do j=this_block%jb,this_block%je
+            do i=this_block%ib,this_block%ie
+
+                WORK3prev = c0
+
+                WORK3prev = WORK3prev                                 &     
+                   + ( dz_unified(km-1) * KAPPA_ISOP_UNIFIED(i,j,kbt,km-1,bid)         &
+                    * ( SLX_UNIFIED(i,j,ieast ,kbt,km-1 ,bid)                  &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,km-1,n,bid)     &
+                      + SLY_UNIFIED(i,j,jnorth,kbt,km-1,bid)                   &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,km-1,n,bid)     &
+                      + SLX_UNIFIED(i,j,iwest ,kbt,km-1,bid)                   &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,km-1,n,bid)     &
+                      + SLY_UNIFIED(i,j,jsouth,kbt,km-1,bid)                   &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,km-1,n,bid) ) )
+
+               WORK3prev = WORK3prev                                 &
+                    + ( SF_SLX_UNIFIED(i  ,j  ,ieast ,kbt,km-1,bid)            &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,km-1,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jnorth,kbt,km-1,bid)            &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,km-1,n,bid)     &
+                      + SF_SLX_UNIFIED(i  ,j  ,iwest ,kbt,km-1,bid)            &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,km-1,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jsouth,kbt,km-1,bid)            &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,km-1,n,bid) )
+
+
+               WORK3prev = WORK3prev                           &
+                    + ( dzbottomprev * KAPPA_ISOP_UNIFIED(i,j,ktp,km,bid)    &
+                    * ( SLX_UNIFIED(i  ,j  ,ieast ,ktp,km,bid)               &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,km,n,bid)     &
+                      + SLY_UNIFIED(i  ,j  ,jnorth,ktp,km,bid)               &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,km,n,bid)     &
+                      + SLX_UNIFIED(i  ,j  ,iwest ,ktp,km,bid)               &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,km,n,bid)     &
+                      + SLY_UNIFIED(i  ,j  ,jsouth,ktp,km,bid)               &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,km,n,bid) ) )
+
+
+
+            enddo   
+           enddo
+
          endif
         endif
       enddo  

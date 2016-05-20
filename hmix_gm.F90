@@ -2264,7 +2264,7 @@
                 fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
 
-                GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &
+                GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &               !done
                              + FY(i,j,n) - FY(i,j-1,n)  &
                       + fzprev - fz )*dzr(k)*TAREA_R(i,j,bid)
 
@@ -2333,7 +2333,7 @@
 
                 WORK3prev = c0
 
-                WORK3prev = WORK3prev                                 &
+                WORK3prev = WORK3prev                                 &   !done
                    + ( dz(km-1) * KAPPA_ISOP(i,j,kbt,km-1,bid)         &
                     * ( SLX(i,j,ieast ,kbt,km-1 ,bid)                  &
                        * HYX(i  ,j  ,bid) * TX(i  ,j  ,km-1,n,bid)     &
@@ -2345,7 +2345,7 @@
                        * HXY(i  ,j-1,bid) * TY(i  ,j-1,km-1,n,bid) ) )
     
 
-                WORK3prev = WORK3prev                                 &
+                WORK3prev = WORK3prev                                 &   !done
                     + ( SF_SLX(i  ,j  ,ieast ,kbt,km-1,bid)            &
                        * HYX(i  ,j  ,bid) * TX(i  ,j  ,km-1,n,bid)     &
                       + SF_SLY(i  ,j  ,jnorth,kbt,km-1,bid)            &
@@ -2356,7 +2356,7 @@
                        * HXY(i  ,j-1,bid) * TY(i  ,j-1,km-1,n,bid) )
 
 
-                WORK3prev = WORK3prev                           &
+                WORK3prev = WORK3prev                           &         !done     
                     + ( dzbottomprev * KAPPA_ISOP(i,j,ktp,km,bid)    &
                     * ( SLX(i  ,j  ,ieast ,ktp,km,bid)               &
                        * HYX(i  ,j  ,bid) * TX(i  ,j  ,km,n,bid)     &
