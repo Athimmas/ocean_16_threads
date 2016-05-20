@@ -2402,6 +2402,20 @@
 
 
      end if
+
+      if ( ah_bkg_bottom_unified /= c0 ) then
+
+         do j=1,ny_block
+            do i=1,nx_block
+
+             if( k == KMT_UNIFIED(i,j,bid)) then
+                  HOR_DIFF_UNIFIED(i,j,kbt,k,bid) = ah_bkg_bottom_unified
+             endif
+
+            enddo
+         enddo
+
+      endif
  
 
  end subroutine hdifft_gm_unified 
