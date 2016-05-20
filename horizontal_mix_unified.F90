@@ -33,7 +33,7 @@
    use hmix_del4, only: init_del4u, init_del4t, hdiffu_del4, hdifft_del4
    use hmix_gm, only: hdifft_gm,diag_gm_bolus,kappa_isop_type,kappa_thic_type, &
                       transition_layer_on,ah_bolus,slope_control,diff_tapering,&
-                      slm_r,slm_b,use_const_ah_bkg_srfbl,ah_bkg_srfbl
+                      slm_r,slm_b,use_const_ah_bkg_srfbl,ah_bkg_srfbl,cancellation_occurs
    use hmix_aniso, only: init_aniso, hdiffu_aniso
    use topostress, only: ltopostress
    use horizontal_mix, only:tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER
@@ -2417,6 +2417,58 @@
 
       endif
  
+     do j=1,ny_block
+        do i=1,nx_block-1
+          WORK3(i,j) = KAPPA_ISOP_UNIFIED(i,  j,ktp,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,  j,ktp,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i,  j,kbt,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,  j,kbt,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i+1,j,ktp,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i+1,j,ktp,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i+1,j,kbt,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i+1,j,kbt,k,bid)
+        enddo
+      enddo
+
+      do j=1,ny_block-1
+        do i=1,nx_block
+          WORK4(i,j) = KAPPA_ISOP_UNIFIED(i,j,  ktp,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,j,  ktp,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i,j,  kbt,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,j,  kbt,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i,j+1,ktp,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,j+1,ktp,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i,j+1,kbt,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,j+1,kbt,k,bid)
+        enddo
+      enddo
+
+      do n=1,nt
+        FX(:,:,n) = dz_unified(k) * CX * TX_UNIFIED(:,:,k,n,bid) * WORK3
+        FY(:,:,n) = dz_unified(k) * CY * TY_UNIFIED(:,:,k,n,bid) * WORK4
+      enddo
+
+
+      if ( .not. cancellation_occurs ) then
+
+        do j=1,ny_block
+          do i=1,nx_block-1
+            WORK1(i,j) = KAPPA_ISOP_UNIFIED(i,j,ktp,k,bid)                     &
+                         * SLX_UNIFIED(i,j,ieast,ktp,k,bid) * dz_unified(k)    &
+                         - SF_SLX_UNIFIED(i,j,ieast,ktp,k,bid)
+            WORK2(i,j) = KAPPA_ISOP_UNIFIED(i,j,kbt,k,bid)                     &
+                         * SLX_UNIFIED(i,j,ieast,kbt,k,bid) * dz_unified(k)    &
+                         - SF_SLX_UNIFIED(i,j,ieast,kbt,k,bid)
+            WORK3(i,j) = KAPPA_ISOP_UNIFIED(i+1,j,ktp,k,bid)                   &
+                         * SLX_UNIFIED(i+1,j,iwest,ktp,k,bid) * dz_unified(k)  &
+                         - SF_SLX_UNIFIED(i+1,j,iwest,ktp,k,bid)
+            WORK4(i,j) = KAPPA_ISOP_UNIFIED(i+1,j,kbt,k,bid)                   &
+                         * SLX_UNIFIED(i+1,j,iwest,kbt,k,bid) * dz_unified(k)  &
+                         - SF_SLX_UNIFIED(i+1,j,iwest,kbt,k,bid)
+          enddo
+        enddo
+
+       endif 
 
  end subroutine hdifft_gm_unified 
 
