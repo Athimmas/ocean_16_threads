@@ -2513,7 +2513,175 @@
         end do
 
 
-       endif 
+       endif
+
+     do n = 1,nt
+
+!-----------------------------------------------------------------------
+!
+!     calculate vertical fluxes thru horizontal faces of T-cell
+!     - Az(dz*Ax(HYX*KAPPA*SLX*TX)) - Az(dz*Ay(HXY*KAPPA*SLY*TY))
+!     calculate isopycnal diffusion from flux differences
+!     DTK = (Dx(FX)+Dy(FY)+Dz(FZ)) / volume
+!
+!-----------------------------------------------------------------------
+
+        GTK(:,:,n) = c0
+
+        if ( k < km ) then
+
+          WORK3 = c0
+
+          if ( .not. cancellation_occurs ) then
+
+!pw loop split to improve performance  -- 2
+
+            do j=this_block%jb,this_block%je
+              do i=this_block%ib,this_block%ie
+
+                WORK3(i,j) = WORK3(i,j)                               &
+                    + ( dz_unified(k) * KAPPA_ISOP_UNIFIED(i,j,kbt,k,bid)             &
+                    * ( SLX_UNIFIED(i,j,ieast ,kbt,k  ,bid)                   &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k  ,n,bid)     &
+                      + SLY_UNIFIED(i,j,jnorth,kbt,k  ,bid)                   &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k  ,n,bid)     &
+                      + SLX_UNIFIED(i,j,iwest ,kbt,k  ,bid)                   &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k  ,n,bid)     &
+                      + SLY_UNIFIED(i,j,jsouth,kbt,k  ,bid)                   &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k  ,n,bid) ) )
+
+               enddo
+             enddo
+
+           do j=this_block%jb,this_block%je
+              do i=this_block%ib,this_block%ie
+
+                WORK3(i,j) = WORK3(i,j)                               &
+                    + ( SF_SLX_UNIFIED(i  ,j  ,ieast ,kbt,k  ,bid)            &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k  ,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jnorth,kbt,k  ,bid)            &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k  ,n,bid)     &
+                      + SF_SLX_UNIFIED(i  ,j  ,iwest ,kbt,k  ,bid)            &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k  ,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jsouth,kbt,k  ,bid)            &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k  ,n,bid) )
+
+               enddo
+             enddo
+
+            do j=this_block%jb,this_block%je    
+              do i=this_block%ib,this_block%ie
+
+                WORK3(i,j) = WORK3(i,j)                               &
+                    + ( dz_bottom * KAPPA_ISOP_UNIFIED(i,j,ktp,kp1,bid)       &
+                    * ( SLX_UNIFIED(i  ,j  ,ieast ,ktp,kp1,bid)               &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,kp1,n,bid)     &
+                      + SLY_UNIFIED(i  ,j  ,jnorth,ktp,kp1,bid)               &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,kp1,n,bid)     &
+                      + SLX_UNIFIED(i  ,j  ,iwest ,ktp,kp1,bid)               &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,kp1,n,bid)     &
+                      + SLY_UNIFIED(i  ,j  ,jsouth,ktp,kp1,bid)               &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,kp1,n,bid) ) )
+
+               enddo
+             enddo
+
+            do j=this_block%jb,this_block%je          
+              do i=this_block%ib,this_block%ie
+
+                 WORK3(i,j) = WORK3(i,j)                              &
+                    + ( factor                                        &
+                    * ( SF_SLX_UNIFIED(i  ,j  ,ieast ,ktp,kp1,bid)            &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,kp1,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jnorth,ktp,kp1,bid)            &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,kp1,n,bid)     &
+                      + SF_SLX_UNIFIED(i  ,j  ,iwest ,ktp,kp1,bid)            &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,kp1,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jsouth,ktp,kp1,bid)            &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,kp1,n,bid) ) )
+
+               enddo
+             enddo
+
+            do j=this_block%jb,this_block%je
+              do i=this_block%ib,this_block%ie
+
+
+               if(k ==1) then
+
+                 fzprev = c0
+                 dzbottomprev = dz_unified(k)
+
+               else
+
+                WORK3prev = c0
+                dzbottomprev = dz_unified(k)
+
+                WORK3prev = WORK3prev                                 &
+                    + ( dz_unified(k-1) * KAPPA_ISOP_UNIFIED(i,j,kbt,k-1,bid)         &
+                    * ( SLX_UNIFIED(i,j,ieast ,kbt,k-1 ,bid)                  &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k-1,n,bid)     &
+                      + SLY_UNIFIED(i,j,jnorth,kbt,k-1,bid)                   &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k-1,n,bid)     &
+                      + SLX_UNIFIED(i,j,iwest ,kbt,k-1,bid)                   &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k-1,n,bid)     &
+                      + SLY_UNIFIED(i,j,jsouth,kbt,k-1,bid)                   &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k-1,n,bid) ) )
+
+                WORK3prev = WORK3prev                                 &
+                    + ( SF_SLX_UNIFIED(i  ,j  ,ieast ,kbt,k-1,bid)            &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k-1,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jnorth,kbt,k-1,bid)            &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k-1,n,bid)     &
+                      + SF_SLX_UNIFIED(i  ,j  ,iwest ,kbt,k-1,bid)            &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k-1,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jsouth,kbt,k-1,bid)            &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k-1,n,bid) )
+
+                WORK3prev = WORK3prev                           &
+                    + ( dzbottomprev * KAPPA_ISOP_UNIFIED(i,j,ktp,k,bid)    &
+                    * ( SLX_UNIFIED(i  ,j  ,ieast ,ktp,k,bid)               &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k,n,bid)     &
+                      + SLY_UNIFIED(i  ,j  ,jnorth,ktp,k,bid)               &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k,n,bid)     &
+                      + SLX_UNIFIED(i  ,j  ,iwest ,ktp,k,bid)               &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k,n,bid)     &
+                      + SLY_UNIFIED(i  ,j  ,jsouth,ktp,k,bid)               &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k,n,bid) ) )
+
+                 WORK3prev = WORK3prev                          &
+                    + ( c1                                            &
+                    * ( SF_SLX_UNIFIED(i  ,j  ,ieast ,ktp,k  ,bid)            &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k  ,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jnorth,ktp,k  ,bid)            &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k  ,n,bid)     &
+                      + SF_SLX_UNIFIED(i  ,j  ,iwest ,ktp,k  ,bid)            &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k  ,n,bid)     &
+                      + SF_SLY_UNIFIED(i  ,j  ,jsouth,ktp,k  ,bid)            &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k,n,bid) ) )
+
+                 KMASKprev = merge(c1, c0, k-1 < KMT_UNIFIED(i,j,bid))
+
+                 fzprev = -KMASKprev * p25 * WORK3prev
+
+
+                endif
+
+                fz = -KMASK(i,j) * p25 * WORK3(i,j)
+
+
+                GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &
+                             + FY(i,j,n) - FY(i,j-1,n)  &
+                      + fzprev - fz )*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)
+
+ 
+               enddo
+            enddo   
+
+         endif
+        endif
+      enddo  
+ 
 
  end subroutine hdifft_gm_unified 
 

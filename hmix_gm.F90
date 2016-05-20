@@ -2205,7 +2205,7 @@
                 WORK3prev = c0 
                 dzbottomprev = dz(k)    
 
-                WORK3prev = WORK3prev                                 &
+                WORK3prev = WORK3prev                                 &  !done
                     + ( dz(k-1) * KAPPA_ISOP(i,j,kbt,k-1,bid)         &
                     * ( SLX(i,j,ieast ,kbt,k-1 ,bid)                  &
                        * HYX(i  ,j  ,bid) * TX(i  ,j  ,k-1,n,bid)     &
@@ -2217,7 +2217,7 @@
                        * HXY(i  ,j-1,bid) * TY(i  ,j-1,k-1,n,bid) ) )
 
 
-                WORK3prev = WORK3prev                                 &
+                WORK3prev = WORK3prev                                 &  !done
                     + ( SF_SLX(i  ,j  ,ieast ,kbt,k-1,bid)            &
                        * HYX(i  ,j  ,bid) * TX(i  ,j  ,k-1,n,bid)     &
                       + SF_SLY(i  ,j  ,jnorth,kbt,k-1,bid)            &
@@ -2229,7 +2229,7 @@
 
 
 
-                WORK3prev = WORK3prev                           &
+                WORK3prev = WORK3prev                               &   !done
                     + ( dzbottomprev * KAPPA_ISOP(i,j,ktp,k,bid)    &
                     * ( SLX(i  ,j  ,ieast ,ktp,k,bid)               &
                        * HYX(i  ,j  ,bid) * TX(i  ,j  ,k,n,bid)     &
@@ -2241,7 +2241,7 @@
                        * HXY(i  ,j-1,bid) * TY(i  ,j-1,k,n,bid) ) )
 
 
-                 WORK3prev = WORK3prev                          &
+                 WORK3prev = WORK3prev                          &       !done
                     + ( c1                                            &
                     * ( SF_SLX(i  ,j  ,ieast ,ktp,k  ,bid)            &
                        * HYX(i  ,j  ,bid) * TX(i  ,j  ,k  ,n,bid)     &
