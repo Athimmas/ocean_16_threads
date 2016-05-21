@@ -34,7 +34,7 @@
    use hmix_gm, only: diag_gm_bolus,kappa_isop_type,kappa_thic_type, &
                       transition_layer_on,ah_bolus,slope_control,diff_tapering,&
                       slm_r,slm_b,use_const_ah_bkg_srfbl,ah_bkg_srfbl,cancellation_occurs, &
-                      kappa_freq
+                      kappa_freq,ah_bkg_bottom
    use hmix_aniso, only: init_aniso, hdiffu_aniso
    use topostress, only: ltopostress
    use horizontal_mix, only:tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER
@@ -2404,6 +2404,21 @@
 
 
       end if
+
+     if ( ah_bkg_bottom /= c0 ) then
+
+         do j=1,ny_block
+            do i=1,nx_block
+
+             if( k == KMT_UNIFIED(i,j,bid)) then
+                  HOR_DIFF_UNIFIED(i,j,kbt,k,bid) = ah_bkg_bottom
+             endif
+
+            enddo
+         enddo
+
+      endif
+
 
 
      GTK = k
