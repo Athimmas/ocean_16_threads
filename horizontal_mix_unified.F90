@@ -2260,11 +2260,87 @@
                           endif
                           enddo
 
+                          case (slope_control_Gerd)
 
-                         end select 
+!     method by Gerdes et al (1991)
 
-                   enddo 
-             enddo 
+
+                          if (SLA(i,j) > slm_r)  &
+                             TAPER2(i,j) = (slm_r/SLA(i,j))**2
+
+
+                          if (diff_tapering) then
+
+                             if (SLA(i,j) > slm_b)  &
+                                TAPER3(i,j) = (slm_b/SLA(i,j))**2
+
+                             else
+                                TAPER3(i,j) = TAPER2(i,j)
+                             endif
+
+                         end select
+
+
+                      if ( transition_layer_on ) then
+                           TAPER2(i,j) = merge(c1, TAPER2(i,j), reference_depth(kk_sub) &
+                                                         <= TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid))
+                           TAPER3(i,j) = merge(c1, TAPER3(i,j), reference_depth(kk_sub) &
+                                                         <= TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid))
+                      endif
+ 
+                       if ( transition_layer_on  .and.  use_const_ah_bkg_srfbl ) then
+
+                           HOR_DIFF_UNIFIED(i,j,kk_sub,kk,bid) = ah_bkg_srfbl
+
+                       else if ( transition_layer_on .and.               &
+                               ( .not. use_const_ah_bkg_srfbl      .or.  &
+                                 kappa_isop_type == kappa_type_eg  .or.  &
+                                 kappa_thic_type == kappa_type_eg ) ) then
+
+                           HOR_DIFF_UNIFIED(i,j,kk_sub,kk,bid) = KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid)
+
+                       else
+
+                       if ( .not. ( kk == 1 .and. kk_sub == ktp ) ) then
+
+                          if ( use_const_ah_bkg_srfbl ) then
+                              HOR_DIFF_UNIFIED(i,j,kk_sub,kk,bid) = &
+                                   merge( ah_bkg_srfbl * (c1 - TAPER1(i,j) * TAPER2(i,j))   &
+                                          * KAPPA_VERTICAL_UNIFIED(i,j,kk,bid), &
+                                           c0, dz_bottom <= BL_DEPTH_UNIFIED(i,j,bid) )
+                          else
+                              HOR_DIFF_UNIFIED(i,j,kk_sub,kk,bid) =         &
+                              merge( KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid)  &
+                               * (c1 - TAPER1(i,j) * TAPER2(i,j)),  &
+                              c0, dz_bottom <= BL_DEPTH_UNIFIED(i,j,bid) )
+                          endif
+
+                       endif
+
+                       endif
+
+                      KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid) =  &
+                      TAPER1(i,j) * TAPER2(i,j) * KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid)
+
+                      KAPPA_THIC_UNIFIED(i,j,kk_sub,kk,bid) =  &
+                      TAPER1(i,j) * TAPER3(i,j) * KAPPA_THIC_UNIFIED(i,j,kk_sub,kk,bid)
+
+
+                   enddo !j Loop
+             enddo  !i loop
+
+           do j=1,ny_block
+                   do i=1,nx_block
+
+                       if (kk == KMT_UNIFIED(i,j,bid)) then
+                          KAPPA_ISOP_UNIFIED(i,j,kbt,kk,bid) = c0
+                          KAPPA_THIC_UNIFIED(i,j,kbt,kk,bid) = c0
+                       endif
+
+                   enddo
+              enddo
+
+
 
             enddo !k_sub loop
 
