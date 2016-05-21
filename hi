@@ -1,0 +1,303 @@
+./baroclinic.F90:   !print *,"time taken is ", end_time - start_time
+./baroclinic.F90:   !print *,"time taken at 2 is ", end_time - start_time
+./blocks.F90:!   print *, 'IAM (in blocs.F90): ', my_task, 'num blocks: ', num_blocks, &
+./budget_diagnostics.F90:! This routine computes and prints global volume and tracer budgets for a given
+./budget_diagnostics.F90:!     print out the budget diagnostics
+./diagnostics.F90:             diag_print,              &
+./diagnostics.F90:!  actual ccsm filenames will be constructed in diag_print
+./diagnostics.F90:!  set, broadcast and print options to log file
+./diagnostics.F90:! !IROUTINE: diag_print
+./diagnostics.F90: subroutine diag_print
+./diagnostics.F90:!  print diagnostics if it is time
+./diagnostics.F90:!        print global diagnostics to stdout
+./diagnostics.F90:!        print global diagnostics to output file
+./diagnostics.F90:!        close file and print timer info
+./diagnostics.F90:      call timer_print_all()
+./diagnostics.F90:      call document ('diag_print', 'file written: '// trim(diag_outfile))
+./diagnostics.F90: end subroutine diag_print
+./diagnostics.F90:!  Calculates and prints various user-defined transports.
+./distribution.F90:     if(my_task ==0) call PrintCurve(Mesh)
+./distribution.F90:     if(my_task==0) call PrintCurve(Mesh3)
+./distribution.F90:   if(Debug) print *,'nprocs,extra,nblocks,nblocksL,s1: ', &
+./distribution.F90:        !DBG if(my_task ==0) print *,'i,j,ii:= ',i,j,ii
+./distribution.F90:      if(my_task==0) print *,'dist%proc:= ',dist%proc
+./distribution.F90:      print *,'IAM: ',my_task,' SpaceCurve: Number of blocks {total,local} :=', &
+./domain.F90:!  Print some domain information
+./ecosys_mod.F90:            call shr_strdata_print(ndep_sdat)
+./exit_mod.F90:!  This routine prints a message, exits any message environment
+./exit_mod.F90:     exit_message ! message to print before stopping
+./exit_mod.F90:!  print message - must use unit 6 in place of stdout to
+./hmix_gm.F90:      if ( .not. implicit_vertical_mix )  print *, "Error in hmix_gm if ( .not. implicit_vertical_mix )"
+./hmix_gm.F90:            !print *,"Smmoth takes ",end_time - start_time  
+./hmix_gm.F90:          !print *,"SLA_SAVE loop time",end_time - start_time 
+./hmix_gm.F90:          !print *,end_time - start_time 
+./hmix_gm.F90:            !print *,"Time at buoy diff is",end_time - start_time
+./hmix_gm.F90:        !print *,"Time at KAPPA_ISOP_TYPE",end_time - start_time
+./hmix_gm.F90:          !print *,"Loop time at kappa_thic_type == kappa_type_const else if is ",end_time - start_time
+./hmix_gm.F90:        !print *,"First part time is",end_time - start_time
+./hmix_gm.F90:        !print *,"Time at big loop is",end_time - start_time
+./hmix_gm.F90:          !print *,"Time taken at function1 is ",end_time - start_time
+./hmix_gm.F90:          !print *,"Time taken at function2 is ",end_time - start_time
+./hmix_gm.F90:      !print *,"in here ar big work1 loop"
+./hmix_gm.F90:          if( COMPUTE_TLT(i,j) ) print *,i,j
+./hmix_gm.F90:        print *,"Incorrect DIABATIC_DEPTH value in TLT computation"
+./hmix_gm.F90:      !print *,"Transition layer time is",end_time - start_time
+./hmix_gm.F90:      !print *,"Transition layer time is",end_time - start_time  
+./hmix_gm.F90:        print *,'Incorrect TLT computations'
+./hmix_gm.F90:        print *,'Incorrect TLT%INTERIOR_DEPTH computation'
+./hmix_gm.F90:      !print *,end_time - start_time
+./hmix_gm.F90:      !print *,"time taken at merged_stream 1 is ",end_time - start_time
+./hmix_gm.F90:      !print *,"Time at merged_stream 2 is ",end_time - start_time
+./hmix_gm.F90:     !print *,KAPPA_ISOP(45,45,1,45,bid),HOR_DIFF(45,45,1,45,bid) 
+./hmix_gm_submeso_share.F90:        !print *,"Time at first part is",end_time - start_time
+./hmix_gm_submeso_share.F90:        !print *,"Time taken at second time",end_time - start_time
+./horizontal_mix.F90:   !print *,"hi"
+./horizontal_mix.F90:      !print *,"2 is called" 
+./horizontal_mix.F90:      !print *,"4 is called"
+./horizontal_mix.F90:        !print *,"time at tracer_diffs 1 is ",end_time - start_time   
+./horizontal_mix.F90:         !print *,"time at hdifft_gm combined is ",end_time - start_time 
+./horizontal_mix.F90:      !print *,"time at hdifft_gm is ",end_time - start_time
+./horizontal_mix.F90:          !print *,"time at tracer_diffs 2 is ",end_time - start_time
+./horizontal_mix.F90:         !print *,"time at submeso_sf is ",end_time - start_time
+./horizontal_mix.F90:        !print *,"time at submeso_flux is ",end_time - start_time
+./horizontal_mix_unified.F90:   print *,"Intializing unified grids"
+./horizontal_mix_unified.F90:   !print *,"hi"
+./horizontal_mix_unified.F90:        !print *,"time at tracer_diffs 1 is ",end_time - start_time   
+./horizontal_mix_unified.F90:         !print *,"time at hdifft_gm combined is ",end_time - start_time 
+./horizontal_mix_unified.F90:      !print *,"time at hdifft_gm is ",end_time - start_time
+./horizontal_mix_unified.F90:         !print *,"time at submeso_sf is ",end_time - start_time
+./horizontal_mix_unified.F90:        !print *,"time at submeso_flux is ",end_time - start_time
+./horizontal_mix_unified.F90:        !print *,"Time at first part is",end_time - start_time
+./horizontal_mix_unified.F90:        !print *,"Time taken at second time",end_time - start_time
+./horizontal_mix_unified.F90:   !print *,"base time is",end_time - start_time
+./horizontal_mix_unified.F90:     print *,'Incorrect mixed layer depth in submeso subroutine (I)'
+./horizontal_mix_unified.F90:       print *,'Incorrect mixed layer depth in submeso subroutine (II)'
+./horizontal_mix_unified.F90:                  !   print *,"wrong value OH NO",k
+./horizontal_mix_unified.F90:                  !   print *,"its okay Yeah",k
+./horizontal_mix_unified.F90:      if ( .not. implicit_vertical_mix )  print *, "Error in hmix_gm if ( .not. implicit_vertical_mix )" 
+./horizontal_mix_unified.F90:     print *,message
+./horizontal_mix_unified.F90:     print *,message 
+./horizontal_mix_unified.F90:     print *,message
+./horizontal_mix_unified.F90:     print *,message 
+./horizontal_mix_unified.F90:        print *,"Incorrect DIABATIC_DEPTH value in TLT computation"
+./horizontal_mix_unified.F90:      !print *,end_time - start_time
+./horizontal_mix_unified.F90:     !print *,KAPPA_ISOP(45,45,1,45,bid),HOR_DIFF(45,45,1,45,bid) 
+./initial.F90:!  after all warning and error messages are printed.
+./mix_submeso.F90:   !print *,"base time is",end_time - start_time
+./mix_submeso.F90:     print *,'Incorrect mixed layer depth in submeso subroutine (I)'
+./mix_submeso.F90:    ! print *,"Time at part1 is ",end_time - start_time
+./mix_submeso.F90:       print *,'Incorrect mixed layer depth in submeso subroutine (II)'
+./mix_submeso.F90:   !print *,"Time at part2 is",end_time - start_time
+./mix_submeso.F90:   !print *,"Part 3 timings is",end_time - start_time
+./mix_submeso.F90:   !print *,"Part 4 timings is",end_time - start_time
+./mix_submeso.F90:                  !   print *,"wrong value OH NO",k
+./mix_submeso.F90:                  !   print *,"its okay Yeah",k
+./movie.F90:!  Calculates and print global integrals of time average fields
+./ms_balance.F90:     debug1 = .false.             ,& ! Print level-1 debug statements 
+./ms_balance.F90:     debug2 = .false.                ! Print level-2 debug statements 
+./ms_balance.F90:   if (debug1) call print_regions (REGION_MASK_G)
+./ms_balance.F90:                if(debug2) call pt_print('reject duplicate point',i,j) 
+./ms_balance.F90:                   call pt_print('reject marginal sea point',i,j) 
+./ms_balance.F90:                if(debug2) call pt_print('reject land point',i,j) 
+./ms_balance.F90:      print_transport_daily    = .false. ,&
+./ms_balance.F90:      print_transport_monthly  = .true.  ,&
+./ms_balance.F90:      print_transport_annually = .false. ,&
+./ms_balance.F90:    if (print_transport_daily .and. my_task == master_task)  then
+./ms_balance.F90:    if (print_transport_monthly  .and. eom_next &
+./ms_balance.F90:    if (print_transport_annually .and. eom_next .and. imonth_next == 1 &
+./ms_balance.F90:! !IROUTINE:  pt_print
+./ms_balance.F90:   subroutine pt_print (string, i, j)
+./ms_balance.F90:   end subroutine pt_print
+./ms_balance.F90:! !IROUTINE:  print_regions
+./ms_balance.F90:   subroutine print_regions (REGION_MASK_G)
+./ms_balance.F90:!  Print global REGION_MASK
+./ms_balance.F90:   end subroutine print_regions
+./msg_mod.F90:!  This module prints messages. 
+./ocn_comp_mct.F90:      call POP_ErrorPrint(errorCode)
+./ocn_comp_mct.F90:             call POP_ErrorPrint(errorCode)
+./ocn_comp_mct.F90:       !print *,"Time at timestep is ", end_time - start_time
+./ocn_comp_mct.F90:          call POP_ErrorPrint(errorCode)
+./ocn_comp_mct.F90:             call POP_ErrorPrint(errorCode)
+./overflows.F90:! print src adj limits
+./overflows.F90:! print ent adj limits
+./overflows.F90:! print prd adj limits
+./overflows.F90:      call ovf_print_init(len, num_posts, myRecvBuff, post_array)
+./overflows.F90:          call ovf_print_get(count)
+./overflows.F90:!          print *, 'CHECK prd_set IAM = ', my_task, 'ovf_id=', n, &
+./overflows.F90:    call ovf_print_finalize(num_posts)
+./overflows.F90:    call ovf_print_init(len, count)
+./overflows.F90:!          print *, 'CHECK prd_set IAM = ', my_task, 'ovf_id=', ovf_id, &
+./overflows.F90:          call ovf_print_send(len, mySendBuff(loc:loc+len-1), num_posts, ovf_id)
+./overflows.F90:    call ovf_print_finalize(num_posts)
+./overflows.F90:! turn off print   3 Nov 2008
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:!  Print out wtkb for overflow gridboxes
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:!  Print out column UVEL, VVEL for overflow gridboxes
+./overflows.F90:  endif  ! print
+./overflows.F90:         call ovf_print_init(len, num_posts, myRecvBuff, post_array)
+./overflows.F90:               call ovf_print_get(count)
+./overflows.F90:         call ovf_print_finalize(num_posts)
+./overflows.F90:         call ovf_print_init(len, num_posts)
+./overflows.F90:                call ovf_print_send(len, mySendBuff(loc:loc+len-1), num_posts, ovf_id)
+./overflows.F90:          call ovf_print_finalize(num_posts)
+./overflows.F90:        call ovf_print_init(len, num_posts, myRecvBuff, post_array)
+./overflows.F90:        call ovf_print_init(len, num_posts)
+./overflows.F90:  else ! no printing - just see which are my groups
+./overflows.F90:  !do master seperate for easier printing
+./overflows.F90:            endif ! eod - so print
+./overflows.F90:         else !not in this ovf group - but if check if we can print 
+./overflows.F90:               call ovf_print_get(count)
+./overflows.F90:            end if ! eod - so print
+./overflows.F90:         call ovf_print_finalize(num_posts)
+./overflows.F90:        !if iam the group master, need to send the info to be printed
+./overflows.F90:           call ovf_print_send(len, mySendBuff(loc:loc+len-1), &
+./overflows.F90:        endif ! printing
+./overflows.F90:        call ovf_print_finalize(num_posts)
+./overflows.F90:   endif ! print_overflows_diag
+./overflows.F90:   !set up for printing
+./overflows.F90:         call ovf_print_init(tot_len, num_posts, myRecvBuff, post_array)
+./overflows.F90:         call ovf_print_init(tot_len, num_posts)
+./overflows.F90:   else ! not printing
+./overflows.F90:   !seperate the master and slave loops to make printing easier - 
+./overflows.F90:      do n=1,num_ovf !master goes through all because of possible printing
+./overflows.F90:         else !master not in this ovf - but may need to print (?)
+./overflows.F90:               call ovf_print_get(count)
+./overflows.F90:               !unpack and print
+./overflows.F90:            end if !print
+./overflows.F90:         call ovf_print_finalize(num_posts)
+./overflows.F90:               endif ! print master
+./overflows.F90:            call ovf_print_send(tot_len, mySendBuff(loc_start:loc_start+tot_len-1), &
+./overflows.F90:         end if ! print master
+./overflows.F90:         call ovf_print_finalize(num_posts)
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./overflows.F90:                        endif  ! print
+./passive_tracers.F90:!  print out tracer names from tracer modules that are on
+./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
+./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
+./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
+./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
+./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
+./POP_DistributionMod.F90:     if(POP_myTask ==0) call PrintCurve(Mesh)
+./POP_DistributionMod.F90:     if(POP_myTask==0) call PrintCurve(Mesh3)
+./POP_ErrorMod.F90:!  printing error messages.  Note that error flags are local to a
+./POP_ErrorMod.F90:!     Added new error module for logging and printing error messages.
+./POP_ErrorMod.F90:             POP_ErrorPrint
+./POP_ErrorMod.F90:!  the error log for later printing.
+./POP_ErrorMod.F90:      errorMsg               ! message to add to error log for printing
+./POP_ErrorMod.F90:! !IROUTINE: POP_ErrorPrint -- prints the error log
+./POP_ErrorMod.F90: subroutine POP_ErrorPrint(errorCode, printTask)
+./POP_ErrorMod.F90:!  This routine prints all messages in the error log.  If a printTask
+./POP_ErrorMod.F90:!  is specified, only the message log on that task will be printed.
+./POP_ErrorMod.F90:      printTask              ! Task from which to print error log
+./POP_ErrorMod.F90:!  Print all error messages to stdout
+./POP_ErrorMod.F90:   if (present(printTask)) then
+./POP_ErrorMod.F90:      if (POP_myTask == printTask) then
+./POP_ErrorMod.F90: end subroutine POP_ErrorPrint
+./POP_SpaceCurveMod.F90:	     PrintFactor,	&
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
+./POP_SpaceCurveMod.F90:!pw      print *,'Matchfactor: found value: ',val
+./POP_SpaceCurveMod.F90:   subroutine PrintFactor(msg,fac)
+./POP_SpaceCurveMod.F90:      write(*,*) 'PrintFactor: ',msg
+./POP_SpaceCurveMod.F90:   end subroutine PrintFactor
+./POP_SpaceCurveMod.F90:! !IROUTINE: PrintCurve
+./POP_SpaceCurveMod.F90:   subroutine PrintCurve(Mesh)
+./POP_SpaceCurveMod.F90:!  This subroutine prints the several low order 
+./POP_SpaceCurveMod.F90:     integer(int_kind), intent(in), target ::  Mesh(:,:) ! SFC to be printed
+./POP_SpaceCurveMod.F90:   end subroutine PrintCurve
+Binary file ./pop_spacecurvemod.mod matches
+./registry.F90:!   check for error conditions; if error exits, print message and
+./state_mod.F90:      print *,"'(state) ERROR unsupported option -- must define time flag and use check_time_flag')"
+./step_mod.F90:!  compute and print some more diagnostics
+./step_mod.F90:   call diag_print
+./sw_absorption.F90:      zprnt                    ! z level for print
+./sw_absorption.F90:      Trprnt,                 &! chlorophyll transmissions for diagnostic print
+./sw_absorption.F90:      Trjrlv,                 &! Jerlov transmissions for diagnostic print
+./sw_absorption.F90:      prnt = .false.           ! if true, generates diagnostic prints
+./sw_absorption.F90:!   Diagnostic prints if desired
+./tavg.F90:!     compute and print global averages of tavg fields prior to normalizing
+./tavg.F90:   call tavg_global (ns)   ! print global sums of time averages
+./tavg.F90:!  Calculates and print global integrals of time average fields
+./tavg.F90:      print *, "error at tavg_requested" 
+./tavg.F90:     print *,"FATAL ERROR: not in any stream"
+./tavg.F90:      quiet                        ! do not print error message
+./time_management.F90:!  print various time manager options to log (stdout)
+./time_management.F90:!    use unmodified ixxx variables if printing ymds information
+./timers.F90:             timer_print,     &
+./timers.F90:             timer_print_all, &
+./timers.F90:!  and maximum cycles.  If no clock available, print message.
+./timers.F90:! !IROUTINE: timer_print
+./timers.F90: subroutine timer_print(timer_id,stats)
+./timers.F90:!  Prints the accumulated time for a given timer and optional
+./timers.F90:      stats                   ! if true, print statistics for node
+./timers.F90:!  running.  If it is, update to current running time and print the info
+./timers.F90:      !*** Find max node time and print that time as default timer
+./timers.F90:         !*** compute and print statistics for node timer
+./timers.F90:         !*** compute and print statistics for block timers
+./timers.F90:                    'timer_print: attempt to print undefined timer')
+./timers.F90: end subroutine timer_print
+./timers.F90:! !IROUTINE: timer_print_all
+./timers.F90: subroutine timer_print_all(stats)
+./timers.F90:!  Prints the accumulated time for a all timers and optional
+./timers.F90:      stats                   ! if true, print statistics for node
+./timers.F90:!  loop through timers and call timer_print for each defined timer
+./timers.F90:            call timer_print(n,stats)
+./timers.F90:            call timer_print(n)
+./timers.F90: end subroutine timer_print_all
+./vmix_kpp.F90:      prnt = .false. ! if true, diagnostic prints made of tidal, rich
+./vmix_kpp.F90:     print *,message
+./vmix_kpp.F90:     print *,message 
+./vmix_kpp.F90:     print *,message
+./vmix_kpp.F90:     print *,message 
