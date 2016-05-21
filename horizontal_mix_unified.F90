@@ -2346,6 +2346,31 @@
 
     enddo !kk loop
 
+
+    KAPPA_ISOP_UNIFIED(:,:,ktp,1,bid) = c0
+    KAPPA_THIC_UNIFIED(:,:,ktp,1,bid) = c0
+
+    FZTOP_UNIFIED(:,:,:,bid) = c0        ! zero flux B.C. at the surface
+
+      if ( transition_layer_on ) then
+
+          !start_time = omp_get_wtime()
+
+
+          call merged_streamfunction_unified ( this_block )
+
+
+          !end_time = omp_get_wtime()
+
+          !print *,"Time taken at function1 is ",end_time - start_time
+
+          !start_time = omp_get_wtime()
+
+
+          call apply_vertical_profile_to_isop_hor_diff_unified ( this_block )
+
+     endif 
+
   
     endif !k == 1 
 
