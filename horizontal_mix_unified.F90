@@ -2079,6 +2079,23 @@
      .or. ( kappa_freq == kappa_freq_once_a_day .and. eod_last ) &
      .or. ( nsteps_total == 1 ) ) )  compute_kappa_unified(bid) = .true.
 
+     if ( compute_kappa_unified(bid) ) then
+
+               if ( kappa_isop_type == kappa_type_bfreq          .or.  &
+               kappa_thic_type == kappa_type_bfreq          .or.  &
+               kappa_isop_type == kappa_type_bfreq_vmhs     .or.  &
+               kappa_thic_type == kappa_type_bfreq_vmhs     .or.  &
+               kappa_isop_type == kappa_type_bfreq_hdgr     .or.  &
+               kappa_thic_type == kappa_type_bfreq_hdgr     .or.  &
+               kappa_isop_type == kappa_type_bfreq_dradius  .or.  &
+               kappa_thic_type == kappa_type_bfreq_dradius )      &
+            call buoyancy_frequency_dependent_profile_unified (TMIX, this_block)
+
+            compute_kappa_unified(bid) = .false.
+
+     endif
+
+  
     endif !k == 1 
 
 
