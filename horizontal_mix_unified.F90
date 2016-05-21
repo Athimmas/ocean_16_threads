@@ -26,14 +26,15 @@
    use domain, only: nblocks_clinic, distrb_clinic
    use constants
    use communicate, only: my_task, master_task
-   use time_management, only: km, nt, mix_pass
+   use time_management, only: km, nt, mix_pass,eod_last,nsteps_total
    use broadcast, only: broadcast_scalar
    use io_types, only: nml_in, nml_filename, stdout
    use hmix_del2, only: init_del2u, init_del2t, hdiffu_del2, hdifft_del2
    use hmix_del4, only: init_del4u, init_del4t, hdiffu_del4, hdifft_del4
    use hmix_gm, only: diag_gm_bolus,kappa_isop_type,kappa_thic_type, &
                       transition_layer_on,ah_bolus,slope_control,diff_tapering,&
-                      slm_r,slm_b,use_const_ah_bkg_srfbl,ah_bkg_srfbl,cancellation_occurs
+                      slm_r,slm_b,use_const_ah_bkg_srfbl,ah_bkg_srfbl,cancellation_occurs, &
+                      kappa_freq
    use hmix_aniso, only: init_aniso, hdiffu_aniso
    use topostress, only: ltopostress
    use horizontal_mix, only:tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER
@@ -2058,9 +2059,30 @@
  
         endif        
 
-     endif !k == 1
+     if ( ( kappa_isop_type == kappa_type_vmhs           .or.    &
+            kappa_thic_type == kappa_type_vmhs           .or.    &
+            kappa_isop_type == kappa_type_hdgr           .or.    &
+            kappa_thic_type == kappa_type_hdgr           .or.    &
+            kappa_isop_type == kappa_type_dradius        .or.    &
+            kappa_thic_type == kappa_type_dradius        .or.    &
+            kappa_isop_type == kappa_type_bfreq          .or.    &
+            kappa_thic_type == kappa_type_bfreq          .or.    &
+            kappa_isop_type == kappa_type_bfreq_vmhs     .or.    &
+            kappa_thic_type == kappa_type_bfreq_vmhs     .or.    &
+            kappa_isop_type == kappa_type_bfreq_hdgr     .or.    &
+            kappa_thic_type == kappa_type_bfreq_hdgr     .or.    &
+            kappa_isop_type == kappa_type_bfreq_dradius  .or.    &
+            kappa_thic_type == kappa_type_bfreq_dradius  .or.    &
+            kappa_isop_type == kappa_type_eg             .or.    &
+            kappa_thic_type == kappa_type_eg )            .and.  &
+        ( ( kappa_freq == kappa_freq_every_time_step )           &
+     .or. ( kappa_freq == kappa_freq_once_a_day .and. eod_last ) &
+     .or. ( nsteps_total == 1 ) ) )  compute_kappa_unified(bid) = .true.
 
-        GTK = 0.0
+    endif !k == 1 
+
+
+     GTK = k
 
  end subroutine hdifft_gm_unified 
 
