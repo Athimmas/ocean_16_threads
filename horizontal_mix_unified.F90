@@ -2095,6 +2095,35 @@
 
      endif
 
+        !start_time = omp_get_wtime()
+
+          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)
+          do kk_sub=ktp,kbt
+            do kk=1,km
+               do j=1,ny_block
+                   do i=1,nx_block
+                       KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid) =  KAPPA_LATERAL_UNIFIED(i,j,bid) &
+                                                     *  KAPPA_VERTICAL_UNIFIED(i,j,kk,bid)
+                   enddo
+               enddo
+            enddo
+          enddo
+
+          !start_time = omp_get_wtime()
+          !!$OMP PARALLEL DO
+          !DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)collapse(3)schedule(dynamic,4)
+           do kk_sub=ktp,kbt
+            do kk=1,km
+             do j=1,ny_block
+              do i=1,nx_block
+                 KAPPA_THIC_UNIFIED(i,j,kk_sub,kk,bid) =  ah_bolus  &
+                                          * KAPPA_VERTICAL_UNIFIED(i,j,kk,bid)
+              enddo
+             enddo
+            enddo
+          enddo
+
+
   
     endif !k == 1 
 
