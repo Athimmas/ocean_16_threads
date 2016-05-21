@@ -2272,7 +2272,7 @@
               enddo
             enddo
         
-          else
+          else  !cancellation occurs
 
 !pw loop split to improve performance
 
@@ -2324,7 +2324,7 @@
               enddo
             enddo
 
-          endif
+          endif  !cancellation_occurs
 
         else                 ! k = km
 

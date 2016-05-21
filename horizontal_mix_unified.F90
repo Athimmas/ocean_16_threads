@@ -2502,10 +2502,85 @@
                    + WORK4(i,j) * TZ_UNIFIED(i+1,j,kp1,n,bid) )
             enddo
           enddo
+        end do
+
+        do j=1,ny_block-1
+          do i=1,nx_block
+            WORK1(i,j) = KAPPA_ISOP_UNIFIED(i,j,ktp,k,bid)                     &
+                         * SLY_UNIFIED(i,j,jnorth,ktp,k,bid) * dz_unified(k)   &
+                         - SF_SLY_UNIFIED(i,j,jnorth,ktp,k,bid)
+            WORK2(i,j) = KAPPA_ISOP_UNIFIED(i,j,kbt,k,bid)                     &
+                         * SLY_UNIFIED(i,j,jnorth,kbt,k,bid) * dz_unified(k)           &
+                         - SF_SLY_UNIFIED(i,j,jnorth,kbt,k,bid)
+            WORK3(i,j) = KAPPA_ISOP_UNIFIED(i,j+1,ktp,k,bid)                   &
+                         * SLY_UNIFIED(i,j+1,jsouth,ktp,k,bid) * dz_unified(k)         &
+                         - SF_SLY_UNIFIED(i,j+1,jsouth,ktp,k,bid)
+            WORK4(i,j) = KAPPA_ISOP_UNIFIED(i,j+1,kbt,k,bid)                   &
+                         * SLY_UNIFIED(i,j+1,jsouth,kbt,k,bid) * dz_unified(k)         &
+                         - SF_SLY_UNIFIED(i,j+1,jsouth,kbt,k,bid)
+          enddo
+        enddo
+
+       do n = 1,nt
+
+          do j=1,ny_block-1
+            do i=1,nx_block
+              FY(i,j,n) = FY(i,j,n) - CY(i,j)                          &
+               * ( WORK1(i,j) * TZ_UNIFIED(i,j,k,n,bid)                        &
+                   + WORK2(i,j) * TZ_UNIFIED(i,j,kp1,n,bid)                    &
+                   + WORK3(i,j) * TZ_UNIFIED(i,j+1,k,n,bid)                    &
+                   + WORK4(i,j) * TZ_UNIFIED(i,j+1,kp1,n,bid) )
+            enddo
+          enddo
 
         end do
 
       endif ! .not. cancellation_occurs
+
+     do n = 1,nt
+
+!-----------------------------------------------------------------------
+!
+!     calculate vertical fluxes thru horizontal faces of T-cell
+!     - Az(dz*Ax(HYX*KAPPA*SLX*TX)) - Az(dz*Ay(HXY*KAPPA*SLY*TY))
+!     calculate isopycnal diffusion from flux differences
+!     DTK = (Dx(FX)+Dy(FY)+Dz(FZ)) / volume
+!
+!-----------------------------------------------------------------------
+
+        GTK(:,:,n) = c0
+
+        if ( k < km ) then
+
+          WORK3 = c0
+
+          if ( .not. cancellation_occurs ) then
+
+!pw loop split to improve performance  -- 2
+
+            do j=this_block%jb,this_block%je
+              do i=this_block%ib,this_block%ie
+
+                WORK3(i,j) = WORK3(i,j)                               &
+                    + ( dz_unified(k) * KAPPA_ISOP_UNIFIED(i,j,kbt,k,bid)             &
+                    * ( SLX_UNIFIED(i,j,ieast ,kbt,k  ,bid)                   &
+                       * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k  ,n,bid)     &
+                      + SLY_UNIFIED(i,j,jnorth,kbt,k  ,bid)                   &
+                       * HXY_UNIFIED(i  ,j  ,bid) * TY_UNIFIED(i  ,j  ,k  ,n,bid)     &
+                      + SLX_UNIFIED(i,j,iwest ,kbt,k  ,bid)                   &
+                       * HYX_UNIFIED(i-1,j  ,bid) * TX_UNIFIED(i-1,j  ,k  ,n,bid)     &
+                      + SLY_UNIFIED(i,j,jsouth,kbt,k  ,bid)                   &
+                       * HXY_UNIFIED(i  ,j-1,bid) * TY_UNIFIED(i  ,j-1,k  ,n,bid) ) )
+
+               enddo
+             enddo
+
+          endif !cancellation_errors
+
+       endif    !k<km 
+
+
+     enddo ! Tracer Loop
 
 
      GTK = k
