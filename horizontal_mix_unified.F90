@@ -2374,6 +2374,37 @@
   
     endif !k == 1 
 
+    KMASK = merge(c1, c0, k < KMT_UNIFIED(:,:,bid))
+
+     if ( k < km ) then
+
+      do j=1,ny_block
+         do i=1,nx_block
+
+         WORK1(i,j) = dzw_unified(k)*KMASK(i,j)*TAREA_R_UNIFIED(i,j,bid)*      &
+                 (dz_unified(k)*p25*KAPPA_ISOP_UNIFIED(i,j,kbt,k,  bid)*      &
+               (HYX_UNIFIED (i,j,bid)*SLX_UNIFIED(i,j,ieast, kbt,k,  bid)**2   &
+              + HYXW_UNIFIED(i,j,bid)*SLX_UNIFIED(i,j,iwest, kbt,k,  bid)**2   &
+              + HXY_UNIFIED (i,j,bid)*SLY_UNIFIED(i,j,jnorth,kbt,k,  bid)**2   &
+              + HXYS_UNIFIED(i,j,bid)*SLY_UNIFIED(i,j,jsouth,kbt,k,  bid)**2)  &
+                 +dz_unified(k+1)*p25*KAPPA_ISOP_UNIFIED(i,j,ktp,k+1,bid)*     &
+               (HYX_UNIFIED (i,j,bid)*SLX_UNIFIED(i,j,ieast, ktp,k+1,bid)**2   &
+              + HYXW_UNIFIED(i,j,bid)*SLX_UNIFIED(i,j,iwest, ktp,k+1,bid)**2   &
+              + HXY_UNIFIED (i,j,bid)*SLY_UNIFIED(i,j,jnorth,ktp,k+1,bid)**2   &
+              + HXYS_UNIFIED(i,j,bid)*SLY_UNIFIED(i,j,jsouth,ktp,k+1,bid)**2))
+
+
+              do n=1,size(VDC_UNIFIED,DIM=4)
+                 VDC_GM_UNIFIED(i,j,k,bid) = WORK1(i,j)
+                 VDC_UNIFIED(i,j,k,n,bid) = VDC_UNIFIED(i,j,k,n,bid) + WORK1(i,j)
+              end do
+
+          enddo
+      enddo
+
+
+      end if
+
 
      GTK = k
 
