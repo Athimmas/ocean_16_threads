@@ -2146,7 +2146,44 @@
                                 + (SLY_UNIFIED(i,j,1,kk_sub,kk,bid)**2 &
                                 + SLY_UNIFIED(i,j,2,kk_sub,kk,bid)**2)/DYT_UNIFIED(i,j,bid)**2)) &
                                 + eps
-                        endif              
+                        endif   
+
+                        TAPER1(i,j) = c1 
+                        if ( .not. transition_layer_on ) then
+
+                        if ( kk == 1 ) then
+                        dz_bottom = c0
+                        else
+                        dz_bottom = zt_unified(kk-1)
+                        endif           
+
+
+                        if (slope_control == slope_control_tanh) then
+
+                        WORK1(i,j) = min(c1,zt_unified(kk)*RBR_UNIFIED(i,j,bid)/SLA(i,j))
+                        TAPER1(i,j) = p5*(c1+sin(pi*(WORK1(i,j)-p5)))
+
+!     use the Rossby deformation radius tapering
+!     only within the boundary layer
+
+                        TAPER1(i,j) = merge(TAPER1(i,j), c1,  &
+                               dz_bottom <= BL_DEPTH_UNIFIED(i,j,bid))
+
+                         else
+
+!     sine function is replaced by
+!     function = 4.*x*(1.-abs(x)) for |x|<0.5
+
+                         WORK1(i,j) = min(c1,zt_unified(kk)*RBR_UNIFIED(i,j,bid)/SLA(i,j))
+                         TAPER1(i,j) = (p5+c2*(WORK1(i,j)-p5)*(c1-abs(WORK1(i,j)-p5)))
+
+                         TAPER1(i,j) = merge(TAPER1(i,j), c1,  &
+                                  dz_bottom <= BL_DEPTH_UNIFIED(i,j,bid))
+
+                         endif
+
+
+                        endif ! not transition_layer
 
                    enddo 
              enddo 
