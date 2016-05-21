@@ -2182,8 +2182,86 @@
 
                          endif
 
-
                         endif ! not transition_layer
+                        TAPER2(i,j) = c1
+                        TAPER3(i,j) = c1
+
+
+                         select case (slope_control)
+                         case (slope_control_tanh)
+
+!     method by Danabasoglu & Mcwilliams (1995)
+
+                         TAPER2(i,j) = merge(p5*  &
+                          (c1-tanh(c10*SLA(i,j)/slm_r-c4)), c0, SLA(i,j) < slm_r)
+
+                         if ( diff_tapering ) then
+                          TAPER3(i,j) = merge(p5*  &
+                          (c1-tanh(c10*SLA(i,j)/slm_b-c4)), c0, SLA(i,j) < slm_b)
+                         else
+                          TAPER3(i,j) = TAPER2(i,j)
+                         endif
+
+                         case (slope_control_notanh)
+
+!     similar to DM95 except replacing tanh by
+!     function = x*(1.-0.25*abs(x)) for |x|<2
+!              = sign(x)            for |x|>2
+!     (faster than DM95)
+
+
+                         if (SLA(i,j) > 0.2_r8*slm_r .and. &
+                             SLA(i,j) < 0.6_r8*slm_r) then
+                             TAPER2(i,j) = &
+                             p5*(c1-(2.5_r8*SLA(i,j)/slm_r-c1)*  &
+                             (c4-abs(c10*SLA(i,j)/slm_r-c4)))
+                         else if (SLA(i,j) >= 0.6_r8*slm_r) then
+                             TAPER2(i,j) = c0
+                         endif
+
+                         if ( diff_tapering ) then
+
+                           if (SLA(i,j) > 0.2_r8*slm_b .and. &
+                              SLA(i,j) < 0.6_r8*slm_b) then
+                              TAPER3(i,j) = &
+                              p5*(c1-(2.5_r8*SLA(i,j)/slm_b-c1)* &
+                              (c4-abs(c10*SLA(i,j)/slm_b-c4)))
+                           else if (SLA(i,j) >= 0.6_r8*slm_b) then
+                              TAPER3(i,j) = c0
+                         endif
+
+                         else
+                              TAPER3(i,j) = TAPER2(i,j)
+                         endif
+
+                         case (slope_control_clip)
+
+!     slope clipping
+
+                         do n=1,2
+
+                         if (abs(SLX_UNIFIED(i,j,n,kk_sub,kk,bid)  &
+                            * dzw_unified(kid) / HUS_UNIFIED(i,j,bid)) > slm_r) then
+                            SLX_UNIFIED(i,j,n,kk_sub,kk,bid) =             &
+                                        sign(slm_r * HUS_UNIFIED(i,j,bid)  &
+                                           * dzwr_unified(kid),            &
+                                        SLX_UNIFIED(i,j,n,kk_sub,kk,bid))
+                         endif
+                         enddo
+
+                         do n=1,2
+
+                         if (abs(SLY_UNIFIED(i,j,n,kk_sub,kk,bid)  &
+                          * dzw_unified(kid) / HUW_UNIFIED(i,j,bid)) > slm_r) then
+                          SLY_UNIFIED(i,j,n,kk_sub,kk,bid) =             &
+                                  sign(slm_r * HUW_UNIFIED(i,j,bid)  &
+                                     * dzwr_unified(kid),            &
+                                  SLY_UNIFIED(i,j,n,kk_sub,kk,bid))
+                          endif
+                          enddo
+
+
+                         end select 
 
                    enddo 
              enddo 
