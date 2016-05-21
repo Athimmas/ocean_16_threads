@@ -2110,8 +2110,7 @@
           enddo
 
           !start_time = omp_get_wtime()
-          !!$OMP PARALLEL DO
-          !DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)collapse(3)schedule(dynamic,4)
+          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)collapse(3)schedule(dynamic,4)
            do kk_sub=ktp,kbt
             do kk=1,km
              do j=1,ny_block
@@ -2123,6 +2122,38 @@
             enddo
           enddo
 
+    do kk=1,km
+
+          kp1 = min(kk+1,km)
+          reference_depth(ktp) = zt_unified(kp1)
+          reference_depth(kbt) = zw_unified(kp1)
+          if ( kk == km )  reference_depth(ktp) = zw_unified(kp1)
+
+            do kk_sub = ktp,kbt 
+
+             kid = kk + kk_sub - 2
+
+             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,dzw,dz_bottom,zt)NUM_THREADS(60)
+             do j=1,ny_block
+                   do i=1,nx_block
+
+                       if ( transition_layer_on ) then
+                          SLA(i,j) = SLA_SAVE_UNIFIED(i,j,kk_sub,kk,bid)
+                       else
+                          SLA(i,j) = dzw_unified(kid)*sqrt(p5*( &
+                                 (SLX_UNIFIED(i,j,1,kk_sub,kk,bid)**2 & 
+                                + SLX_UNIFIED(i,j,2,kk_sub,kk,bid)**2)/DXT_UNIFIED(i,j,bid)**2 &
+                                + (SLY_UNIFIED(i,j,1,kk_sub,kk,bid)**2 &
+                                + SLY_UNIFIED(i,j,2,kk_sub,kk,bid)**2)/DYT_UNIFIED(i,j,bid)**2)) &
+                                + eps
+                        endif              
+
+                   enddo 
+             enddo 
+
+            enddo !k_sub loop
+
+    enddo !kk loop
 
   
     endif !k == 1 
