@@ -2473,6 +2473,41 @@
       end do
 
 
+      if ( .not. cancellation_occurs ) then
+
+        do j=1,ny_block
+          do i=1,nx_block-1
+            WORK1(i,j) = KAPPA_ISOP_UNIFIED(i,j,ktp,k,bid)                     &
+                         * SLX_UNIFIED(i,j,ieast,ktp,k,bid) * dz_unified(k)            &
+                         - SF_SLX_UNIFIED(i,j,ieast,ktp,k,bid)
+            WORK2(i,j) = KAPPA_ISOP_UNIFIED(i,j,kbt,k,bid)                     &
+                         * SLX_UNIFIED(i,j,ieast,kbt,k,bid) * dz_unified(k)            &
+                         - SF_SLX_UNIFIED(i,j,ieast,kbt,k,bid)
+            WORK3(i,j) = KAPPA_ISOP_UNIFIED(i+1,j,ktp,k,bid)                   &
+                         * SLX_UNIFIED(i+1,j,iwest,ktp,k,bid) * dz_unified(k)          &
+                         - SF_SLX_UNIFIED(i+1,j,iwest,ktp,k,bid)
+            WORK4(i,j) = KAPPA_ISOP_UNIFIED(i+1,j,kbt,k,bid)                   &
+                         * SLX_UNIFIED(i+1,j,iwest,kbt,k,bid) * dz_unified(k)          &
+                         - SF_SLX_UNIFIED(i+1,j,iwest,kbt,k,bid)
+          enddo
+        enddo
+
+        do n = 1,nt
+          do j=1,ny_block
+            do i=1,nx_block-1
+              FX(i,j,n) = FX(i,j,n) - CX(i,j)                          &
+               * ( WORK1(i,j) * TZ_UNIFIED(i,j,k,n,bid)                        &
+                   + WORK2(i,j) * TZ_UNIFIED(i,j,kp1,n,bid)                    &
+                   + WORK3(i,j) * TZ_UNIFIED(i+1,j,k,n,bid)                    &
+                   + WORK4(i,j) * TZ_UNIFIED(i+1,j,kp1,n,bid) )
+            enddo
+          enddo
+
+        end do
+
+      endif ! .not. cancellation_occurs
+
+
      GTK = k
 
  end subroutine hdifft_gm_unified 
