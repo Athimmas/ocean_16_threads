@@ -2419,6 +2419,58 @@
 
       endif
 
+     do j=1,ny_block
+        do i=1,nx_block-1
+          WORK3(i,j) = KAPPA_ISOP_UNIFIED(i,  j,ktp,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,  j,ktp,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i,  j,kbt,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,  j,kbt,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i+1,j,ktp,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i+1,j,ktp,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i+1,j,kbt,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i+1,j,kbt,k,bid)
+        enddo
+      enddo
+
+      do j=1,ny_block-1
+        do i=1,nx_block
+          WORK4(i,j) = KAPPA_ISOP_UNIFIED(i,j,  ktp,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,j,  ktp,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i,j,  kbt,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,j,  kbt,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i,j+1,ktp,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,j+1,ktp,k,bid)  &
+                     + KAPPA_ISOP_UNIFIED(i,j+1,kbt,k,bid)  &
+                     + HOR_DIFF_UNIFIED  (i,j+1,kbt,k,bid)
+        enddo
+      enddo
+
+
+      kp1 = k + 1
+      if ( k == km )  kp1 = k
+
+      if ( k < km ) then
+        dz_bottom = dz_unified(kp1)
+        factor    = c1
+      else
+        dz_bottom = c0
+        factor    = c0
+      endif
+
+     do n = 1,nt
+
+!-----------------------------------------------------------------------
+!
+!     calculate horizontal fluxes thru vertical faces of T-cell
+!     FX = dz*HYX*Ax(Az(KAPPA))*Dx(T) : flux in x-direction
+!     FY = dz*HXY*Ay(Az(KAPPA))*Dy(T) : flux in y-direction
+!
+!-----------------------------------------------------------------------
+
+        FX(:,:,n) = dz_unified(k) * CX * TX_UNIFIED(:,:,k,n,bid) * WORK3
+        FY(:,:,n) = dz_unified(k) * CY * TY_UNIFIED(:,:,k,n,bid) * WORK4
+
+      end do
 
 
      GTK = k
