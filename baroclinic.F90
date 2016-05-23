@@ -642,6 +642,7 @@
 
    !endif
 
+
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
 
    do iblock = 1,nblocks_clinic
@@ -1830,10 +1831,7 @@
 
    if(k==1)then
 
-   HMXL_unified = HMXL 
-   KPP_HBLT_UNIFIED = KPP_HBLT
-   !$omp barrier
- 
+    call init_horizontal_mix_unified 
 
    !start_time = omp_get_wtime()
    do kk=1,km

@@ -1,303 +1,522 @@
-./baroclinic.F90:   !print *,"time taken is ", end_time - start_time
-./baroclinic.F90:   !print *,"time taken at 2 is ", end_time - start_time
-./blocks.F90:!   print *, 'IAM (in blocs.F90): ', my_task, 'num blocks: ', num_blocks, &
-./budget_diagnostics.F90:! This routine computes and prints global volume and tracer budgets for a given
-./budget_diagnostics.F90:!     print out the budget diagnostics
-./diagnostics.F90:             diag_print,              &
-./diagnostics.F90:!  actual ccsm filenames will be constructed in diag_print
-./diagnostics.F90:!  set, broadcast and print options to log file
-./diagnostics.F90:! !IROUTINE: diag_print
-./diagnostics.F90: subroutine diag_print
-./diagnostics.F90:!  print diagnostics if it is time
-./diagnostics.F90:!        print global diagnostics to stdout
-./diagnostics.F90:!        print global diagnostics to output file
-./diagnostics.F90:!        close file and print timer info
-./diagnostics.F90:      call timer_print_all()
-./diagnostics.F90:      call document ('diag_print', 'file written: '// trim(diag_outfile))
-./diagnostics.F90: end subroutine diag_print
-./diagnostics.F90:!  Calculates and prints various user-defined transports.
-./distribution.F90:     if(my_task ==0) call PrintCurve(Mesh)
-./distribution.F90:     if(my_task==0) call PrintCurve(Mesh3)
-./distribution.F90:   if(Debug) print *,'nprocs,extra,nblocks,nblocksL,s1: ', &
-./distribution.F90:        !DBG if(my_task ==0) print *,'i,j,ii:= ',i,j,ii
-./distribution.F90:      if(my_task==0) print *,'dist%proc:= ',dist%proc
-./distribution.F90:      print *,'IAM: ',my_task,' SpaceCurve: Number of blocks {total,local} :=', &
-./domain.F90:!  Print some domain information
-./ecosys_mod.F90:            call shr_strdata_print(ndep_sdat)
-./exit_mod.F90:!  This routine prints a message, exits any message environment
-./exit_mod.F90:     exit_message ! message to print before stopping
-./exit_mod.F90:!  print message - must use unit 6 in place of stdout to
-./hmix_gm.F90:      if ( .not. implicit_vertical_mix )  print *, "Error in hmix_gm if ( .not. implicit_vertical_mix )"
-./hmix_gm.F90:            !print *,"Smmoth takes ",end_time - start_time  
-./hmix_gm.F90:          !print *,"SLA_SAVE loop time",end_time - start_time 
-./hmix_gm.F90:          !print *,end_time - start_time 
-./hmix_gm.F90:            !print *,"Time at buoy diff is",end_time - start_time
-./hmix_gm.F90:        !print *,"Time at KAPPA_ISOP_TYPE",end_time - start_time
-./hmix_gm.F90:          !print *,"Loop time at kappa_thic_type == kappa_type_const else if is ",end_time - start_time
-./hmix_gm.F90:        !print *,"First part time is",end_time - start_time
-./hmix_gm.F90:        !print *,"Time at big loop is",end_time - start_time
-./hmix_gm.F90:          !print *,"Time taken at function1 is ",end_time - start_time
-./hmix_gm.F90:          !print *,"Time taken at function2 is ",end_time - start_time
-./hmix_gm.F90:      !print *,"in here ar big work1 loop"
-./hmix_gm.F90:          if( COMPUTE_TLT(i,j) ) print *,i,j
-./hmix_gm.F90:        print *,"Incorrect DIABATIC_DEPTH value in TLT computation"
-./hmix_gm.F90:      !print *,"Transition layer time is",end_time - start_time
-./hmix_gm.F90:      !print *,"Transition layer time is",end_time - start_time  
-./hmix_gm.F90:        print *,'Incorrect TLT computations'
-./hmix_gm.F90:        print *,'Incorrect TLT%INTERIOR_DEPTH computation'
-./hmix_gm.F90:      !print *,end_time - start_time
-./hmix_gm.F90:      !print *,"time taken at merged_stream 1 is ",end_time - start_time
-./hmix_gm.F90:      !print *,"Time at merged_stream 2 is ",end_time - start_time
-./hmix_gm.F90:     !print *,KAPPA_ISOP(45,45,1,45,bid),HOR_DIFF(45,45,1,45,bid) 
-./hmix_gm_submeso_share.F90:        !print *,"Time at first part is",end_time - start_time
-./hmix_gm_submeso_share.F90:        !print *,"Time taken at second time",end_time - start_time
-./horizontal_mix.F90:   !print *,"hi"
-./horizontal_mix.F90:      !print *,"2 is called" 
-./horizontal_mix.F90:      !print *,"4 is called"
-./horizontal_mix.F90:        !print *,"time at tracer_diffs 1 is ",end_time - start_time   
-./horizontal_mix.F90:         !print *,"time at hdifft_gm combined is ",end_time - start_time 
-./horizontal_mix.F90:      !print *,"time at hdifft_gm is ",end_time - start_time
-./horizontal_mix.F90:          !print *,"time at tracer_diffs 2 is ",end_time - start_time
-./horizontal_mix.F90:         !print *,"time at submeso_sf is ",end_time - start_time
-./horizontal_mix.F90:        !print *,"time at submeso_flux is ",end_time - start_time
-./horizontal_mix_unified.F90:   print *,"Intializing unified grids"
-./horizontal_mix_unified.F90:   !print *,"hi"
-./horizontal_mix_unified.F90:        !print *,"time at tracer_diffs 1 is ",end_time - start_time   
-./horizontal_mix_unified.F90:         !print *,"time at hdifft_gm combined is ",end_time - start_time 
-./horizontal_mix_unified.F90:      !print *,"time at hdifft_gm is ",end_time - start_time
-./horizontal_mix_unified.F90:         !print *,"time at submeso_sf is ",end_time - start_time
-./horizontal_mix_unified.F90:        !print *,"time at submeso_flux is ",end_time - start_time
-./horizontal_mix_unified.F90:        !print *,"Time at first part is",end_time - start_time
-./horizontal_mix_unified.F90:        !print *,"Time taken at second time",end_time - start_time
-./horizontal_mix_unified.F90:   !print *,"base time is",end_time - start_time
-./horizontal_mix_unified.F90:     print *,'Incorrect mixed layer depth in submeso subroutine (I)'
-./horizontal_mix_unified.F90:       print *,'Incorrect mixed layer depth in submeso subroutine (II)'
-./horizontal_mix_unified.F90:                  !   print *,"wrong value OH NO",k
-./horizontal_mix_unified.F90:                  !   print *,"its okay Yeah",k
-./horizontal_mix_unified.F90:      if ( .not. implicit_vertical_mix )  print *, "Error in hmix_gm if ( .not. implicit_vertical_mix )" 
-./horizontal_mix_unified.F90:     print *,message
-./horizontal_mix_unified.F90:     print *,message 
-./horizontal_mix_unified.F90:     print *,message
-./horizontal_mix_unified.F90:     print *,message 
-./horizontal_mix_unified.F90:        print *,"Incorrect DIABATIC_DEPTH value in TLT computation"
-./horizontal_mix_unified.F90:      !print *,end_time - start_time
-./horizontal_mix_unified.F90:     !print *,KAPPA_ISOP(45,45,1,45,bid),HOR_DIFF(45,45,1,45,bid) 
-./initial.F90:!  after all warning and error messages are printed.
-./mix_submeso.F90:   !print *,"base time is",end_time - start_time
-./mix_submeso.F90:     print *,'Incorrect mixed layer depth in submeso subroutine (I)'
-./mix_submeso.F90:    ! print *,"Time at part1 is ",end_time - start_time
-./mix_submeso.F90:       print *,'Incorrect mixed layer depth in submeso subroutine (II)'
-./mix_submeso.F90:   !print *,"Time at part2 is",end_time - start_time
-./mix_submeso.F90:   !print *,"Part 3 timings is",end_time - start_time
-./mix_submeso.F90:   !print *,"Part 4 timings is",end_time - start_time
-./mix_submeso.F90:                  !   print *,"wrong value OH NO",k
-./mix_submeso.F90:                  !   print *,"its okay Yeah",k
-./movie.F90:!  Calculates and print global integrals of time average fields
-./ms_balance.F90:     debug1 = .false.             ,& ! Print level-1 debug statements 
-./ms_balance.F90:     debug2 = .false.                ! Print level-2 debug statements 
-./ms_balance.F90:   if (debug1) call print_regions (REGION_MASK_G)
-./ms_balance.F90:                if(debug2) call pt_print('reject duplicate point',i,j) 
-./ms_balance.F90:                   call pt_print('reject marginal sea point',i,j) 
-./ms_balance.F90:                if(debug2) call pt_print('reject land point',i,j) 
-./ms_balance.F90:      print_transport_daily    = .false. ,&
-./ms_balance.F90:      print_transport_monthly  = .true.  ,&
-./ms_balance.F90:      print_transport_annually = .false. ,&
-./ms_balance.F90:    if (print_transport_daily .and. my_task == master_task)  then
-./ms_balance.F90:    if (print_transport_monthly  .and. eom_next &
-./ms_balance.F90:    if (print_transport_annually .and. eom_next .and. imonth_next == 1 &
-./ms_balance.F90:! !IROUTINE:  pt_print
-./ms_balance.F90:   subroutine pt_print (string, i, j)
-./ms_balance.F90:   end subroutine pt_print
-./ms_balance.F90:! !IROUTINE:  print_regions
-./ms_balance.F90:   subroutine print_regions (REGION_MASK_G)
-./ms_balance.F90:!  Print global REGION_MASK
-./ms_balance.F90:   end subroutine print_regions
-./msg_mod.F90:!  This module prints messages. 
-./ocn_comp_mct.F90:      call POP_ErrorPrint(errorCode)
-./ocn_comp_mct.F90:             call POP_ErrorPrint(errorCode)
-./ocn_comp_mct.F90:       !print *,"Time at timestep is ", end_time - start_time
-./ocn_comp_mct.F90:          call POP_ErrorPrint(errorCode)
-./ocn_comp_mct.F90:             call POP_ErrorPrint(errorCode)
-./overflows.F90:! print src adj limits
-./overflows.F90:! print ent adj limits
-./overflows.F90:! print prd adj limits
-./overflows.F90:      call ovf_print_init(len, num_posts, myRecvBuff, post_array)
-./overflows.F90:          call ovf_print_get(count)
-./overflows.F90:!          print *, 'CHECK prd_set IAM = ', my_task, 'ovf_id=', n, &
-./overflows.F90:    call ovf_print_finalize(num_posts)
-./overflows.F90:    call ovf_print_init(len, count)
-./overflows.F90:!          print *, 'CHECK prd_set IAM = ', my_task, 'ovf_id=', ovf_id, &
-./overflows.F90:          call ovf_print_send(len, mySendBuff(loc:loc+len-1), num_posts, ovf_id)
-./overflows.F90:    call ovf_print_finalize(num_posts)
-./overflows.F90:! turn off print   3 Nov 2008
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:!  Print out wtkb for overflow gridboxes
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:!  Print out column UVEL, VVEL for overflow gridboxes
-./overflows.F90:  endif  ! print
-./overflows.F90:         call ovf_print_init(len, num_posts, myRecvBuff, post_array)
-./overflows.F90:               call ovf_print_get(count)
-./overflows.F90:         call ovf_print_finalize(num_posts)
-./overflows.F90:         call ovf_print_init(len, num_posts)
-./overflows.F90:                call ovf_print_send(len, mySendBuff(loc:loc+len-1), num_posts, ovf_id)
-./overflows.F90:          call ovf_print_finalize(num_posts)
-./overflows.F90:        call ovf_print_init(len, num_posts, myRecvBuff, post_array)
-./overflows.F90:        call ovf_print_init(len, num_posts)
-./overflows.F90:  else ! no printing - just see which are my groups
-./overflows.F90:  !do master seperate for easier printing
-./overflows.F90:            endif ! eod - so print
-./overflows.F90:         else !not in this ovf group - but if check if we can print 
-./overflows.F90:               call ovf_print_get(count)
-./overflows.F90:            end if ! eod - so print
-./overflows.F90:         call ovf_print_finalize(num_posts)
-./overflows.F90:        !if iam the group master, need to send the info to be printed
-./overflows.F90:           call ovf_print_send(len, mySendBuff(loc:loc+len-1), &
-./overflows.F90:        endif ! printing
-./overflows.F90:        call ovf_print_finalize(num_posts)
-./overflows.F90:   endif ! print_overflows_diag
-./overflows.F90:   !set up for printing
-./overflows.F90:         call ovf_print_init(tot_len, num_posts, myRecvBuff, post_array)
-./overflows.F90:         call ovf_print_init(tot_len, num_posts)
-./overflows.F90:   else ! not printing
-./overflows.F90:   !seperate the master and slave loops to make printing easier - 
-./overflows.F90:      do n=1,num_ovf !master goes through all because of possible printing
-./overflows.F90:         else !master not in this ovf - but may need to print (?)
-./overflows.F90:               call ovf_print_get(count)
-./overflows.F90:               !unpack and print
-./overflows.F90:            end if !print
-./overflows.F90:         call ovf_print_finalize(num_posts)
-./overflows.F90:               endif ! print master
-./overflows.F90:            call ovf_print_send(tot_len, mySendBuff(loc_start:loc_start+tot_len-1), &
-./overflows.F90:         end if ! print master
-./overflows.F90:         call ovf_print_finalize(num_posts)
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./overflows.F90:                        endif  ! print
-./passive_tracers.F90:!  print out tracer names from tracer modules that are on
-./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
-./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
-./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
-./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
-./POP_ConfigMod.F90:!  Finally, the value is printing to stdout using either a generic
-./POP_DistributionMod.F90:     if(POP_myTask ==0) call PrintCurve(Mesh)
-./POP_DistributionMod.F90:     if(POP_myTask==0) call PrintCurve(Mesh3)
-./POP_ErrorMod.F90:!  printing error messages.  Note that error flags are local to a
-./POP_ErrorMod.F90:!     Added new error module for logging and printing error messages.
-./POP_ErrorMod.F90:             POP_ErrorPrint
-./POP_ErrorMod.F90:!  the error log for later printing.
-./POP_ErrorMod.F90:      errorMsg               ! message to add to error log for printing
-./POP_ErrorMod.F90:! !IROUTINE: POP_ErrorPrint -- prints the error log
-./POP_ErrorMod.F90: subroutine POP_ErrorPrint(errorCode, printTask)
-./POP_ErrorMod.F90:!  This routine prints all messages in the error log.  If a printTask
-./POP_ErrorMod.F90:!  is specified, only the message log on that task will be printed.
-./POP_ErrorMod.F90:      printTask              ! Task from which to print error log
-./POP_ErrorMod.F90:!  Print all error messages to stdout
-./POP_ErrorMod.F90:   if (present(printTask)) then
-./POP_ErrorMod.F90:      if (POP_myTask == printTask) then
-./POP_ErrorMod.F90: end subroutine POP_ErrorPrint
-./POP_SpaceCurveMod.F90:	     PrintFactor,	&
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:        if(debug) call PrintCurve(ordered)
-./POP_SpaceCurveMod.F90:!pw      print *,'Matchfactor: found value: ',val
-./POP_SpaceCurveMod.F90:   subroutine PrintFactor(msg,fac)
-./POP_SpaceCurveMod.F90:      write(*,*) 'PrintFactor: ',msg
-./POP_SpaceCurveMod.F90:   end subroutine PrintFactor
-./POP_SpaceCurveMod.F90:! !IROUTINE: PrintCurve
-./POP_SpaceCurveMod.F90:   subroutine PrintCurve(Mesh)
-./POP_SpaceCurveMod.F90:!  This subroutine prints the several low order 
-./POP_SpaceCurveMod.F90:     integer(int_kind), intent(in), target ::  Mesh(:,:) ! SFC to be printed
-./POP_SpaceCurveMod.F90:   end subroutine PrintCurve
-Binary file ./pop_spacecurvemod.mod matches
-./registry.F90:!   check for error conditions; if error exits, print message and
-./state_mod.F90:      print *,"'(state) ERROR unsupported option -- must define time flag and use check_time_flag')"
-./step_mod.F90:!  compute and print some more diagnostics
-./step_mod.F90:   call diag_print
-./sw_absorption.F90:      zprnt                    ! z level for print
-./sw_absorption.F90:      Trprnt,                 &! chlorophyll transmissions for diagnostic print
-./sw_absorption.F90:      Trjrlv,                 &! Jerlov transmissions for diagnostic print
-./sw_absorption.F90:      prnt = .false.           ! if true, generates diagnostic prints
-./sw_absorption.F90:!   Diagnostic prints if desired
-./tavg.F90:!     compute and print global averages of tavg fields prior to normalizing
-./tavg.F90:   call tavg_global (ns)   ! print global sums of time averages
-./tavg.F90:!  Calculates and print global integrals of time average fields
-./tavg.F90:      print *, "error at tavg_requested" 
-./tavg.F90:     print *,"FATAL ERROR: not in any stream"
-./tavg.F90:      quiet                        ! do not print error message
-./time_management.F90:!  print various time manager options to log (stdout)
-./time_management.F90:!    use unmodified ixxx variables if printing ymds information
-./timers.F90:             timer_print,     &
-./timers.F90:             timer_print_all, &
-./timers.F90:!  and maximum cycles.  If no clock available, print message.
-./timers.F90:! !IROUTINE: timer_print
-./timers.F90: subroutine timer_print(timer_id,stats)
-./timers.F90:!  Prints the accumulated time for a given timer and optional
-./timers.F90:      stats                   ! if true, print statistics for node
-./timers.F90:!  running.  If it is, update to current running time and print the info
-./timers.F90:      !*** Find max node time and print that time as default timer
-./timers.F90:         !*** compute and print statistics for node timer
-./timers.F90:         !*** compute and print statistics for block timers
-./timers.F90:                    'timer_print: attempt to print undefined timer')
-./timers.F90: end subroutine timer_print
-./timers.F90:! !IROUTINE: timer_print_all
-./timers.F90: subroutine timer_print_all(stats)
-./timers.F90:!  Prints the accumulated time for a all timers and optional
-./timers.F90:      stats                   ! if true, print statistics for node
-./timers.F90:!  loop through timers and call timer_print for each defined timer
-./timers.F90:            call timer_print(n,stats)
-./timers.F90:            call timer_print(n)
-./timers.F90: end subroutine timer_print_all
-./vmix_kpp.F90:      prnt = .false. ! if true, diagnostic prints made of tidal, rich
-./vmix_kpp.F90:     print *,message
-./vmix_kpp.F90:     print *,message 
-./vmix_kpp.F90:     print *,message
-./vmix_kpp.F90:     print *,message 
+./advection.F90:   use grid, only: dz, DXT, DYT, HUW, HUS, c2dz, KMT, HTE, UAREA_R, DZT,    &
+./advection.F90:               if (k <= KMT(i,j,bid)) then
+./advection.F90:               if (k <= KMT(i,j,bid)) then
+./advection.F90:             if (k /= KMT(i,j,bid)) then
+./advection.F90:          if (k <= KMT(i,j,bid)) then
+./advection.F90:         WTKB = merge(WTK+FC, c0, k < KMT(:,:,bid))
+./advection.F90:         WTKB = merge(WTK+dz(k)*FC, c0, k < KMT(:,:,bid))
+./advection.F90:      if ( k < KMT(i,j,bid)-1 ) then
+./advection.F90:   KMASKE = merge(c1, c0, k <= KMT(:,:,bid) .and. k <= KMTE(:,:,bid))
+./advection.F90:   KMASKN = merge(c1, c0, k <= KMT(:,:,bid) .and. k <= KMTN(:,:,bid))
+./advection.F90:            if (k+1 <= KMT(i,j,bid)) then
+./advection.F90:                  if (k+2 <= KMT(i,j,bid)) then
+./advection.F90:            else ! (k+1>KMT)
+./baroclinic.F90:   use grid, only: FCOR, DZU, HUR, KMU, KMT, sfc_layer_type,                 &
+./baroclinic.F90:           where (k <= KMT(:,:,iblock))
+./baroclinic.F90:             where (k <= KMT(:,:,iblock))
+./baroclinic.F90:             where (k <= KMT(:,:,iblock))
+./baroclinic.F90:                  where (KMT(:,:,iblock) > 0)  ! corrector RHS at k=1
+./baroclinic.F90:                  where (KMT(:,:,iblock) > 0)
+./baroclinic.F90:                  where (KMT(:,:,iblock) > 0)
+./baroclinic.F90:                  where (KMT(:,:,iblock) > 0)
+./baroclinic.F90:                  where (KMT(:,:,iblock) > 0)
+./baroclinic.F90:                  where (KMT(:,:,iblock) > 0)
+./baroclinic.F90:   !!dir$ in( KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,HXY,HYX,RX,RY,RB,RBR,KMT,KMTE,KMTN,BUOY_FREQ_SQ : alloc_if(.true.) free_if(.false.)) &
+./baroclinic.F90:   !!dir$ nocopy(HYX,HXY,RX,RY,TX,TY,TZ,WTOP_ISOP,WBOT_ISOP,RB,RBR,KMT,KMTE,KMTN,SIGMA_TOPO_MASK,UIT,VIT : alloc_if(.false.) free_if(.false.) ) & 
+./baroclinic.F90:            where (k <= KMT(:,:,bid))            &
+./baroclinic.F90:            where (k <= KMT(:,:,bid))            &
+./baroclinic.F90:         where (k <= KMT(:,:,bid))
+./baroclinic.F90:         where (k <= KMT(:,:,bid)) DIAG_TRACER_ADV_2D(:,:,n,bid) = & 
+./baroclinic.F90:         where (k <= KMT(:,:,bid)) DIAG_TRACER_ADV_2D(:,:,n,bid) = &
+./baroclinic.F90:         where (k <= KMT(:,:,bid)) DIAG_TRACER_VDIFF_2D(:,:,n,bid) = &
+./baroclinic.F90:         where (k <= KMT(:,:,bid)) DIAG_TRACER_VDIFF_2D(:,:,n,bid) = &
+./baroclinic.F90:         where (k <= KMT(:,:,bid)) DIAG_TRACER_SOURCE_2D(:,:,n,bid) = &
+./baroclinic.F90:         where (k <= KMT(:,:,bid)) DIAG_TRACER_SOURCE_2D(:,:,n,bid) = &
+./baroclinic.F90:            where (KMT(:,:,bid) > 0)  ! RHS for predictor
+./baroclinic.F90:                                  c0, k <= KMT(:,:,bid))
+./baroclinic.F90:                                  c0, k <= KMT(:,:,bid))
+./baroclinic.F90:               where (KMT(:,:,bid) > 0)
+./baroclinic.F90:                                     c0, k <= KMT(:,:,bid))
+./baroclinic.F90:                                     c0, k <= KMT(:,:,bid))
+./baroclinic.F90:            where (k <= KMT(:,:,bid))
+./barotropic.F90:          KMT, FCOR, HU, CALCT, sfc_layer_rigid, sfc_layer_oldfree 
+./barotropic.F90:            where(KMT(:,:,iblock) > 0 .and. &
+./barotropic.F90:            where(KMT(:,:,iblock) > 0) 
+./budget_diagnostics.F90:       WORK3(:,:,:) = merge (WORK1(:,:,:)*TAREA(:,:,:), c0, KMT(:,:,:) >= k)
+./cfc11_mod.F90:   use grid, only: KMT, zt, zw, n_topo_smooth, fill_points
+./cfc11_mod.F90:          where (k > KMT(:,:,iblock))
+./cfc11_mod.F90:    LAND_MASK = (KMT.gt.0)
+./cfc11_mod.F90:   use grid, only: KMT, zt, zw
+./cfc_mod.F90:   use grid, only: KMT, n_topo_smooth, fill_points
+./cfc_mod.F90:         where (k > KMT(:,:,iblock))
+./cfc_mod.F90:   LAND_MASK = (KMT.gt.0)
+./diag_bsf.F90:   call gather_global (WORK1, KMT, master_task,distrb_clinic)
+./diagnostics.F90:                                c0, k <= KMT(:,:,iblock))
+./diagnostics.F90:                                   c0, k <= KMT(:,:,iblock))
+./diagnostics.F90:                                   c0, k <= KMT(:,:,iblock))
+./diagnostics.F90:                               ,c0,KMT(:,:,iblock) >= k)
+./diagnostics.F90:                                   c0,KMT(:,:,iblock) >= k)
+./diagnostics.F90:                                   c0,KMT(:,:,iblock) >= k)
+./diags_on_lat_aux_grid.F90:   call gather_global (WORK_G, KMT, ioroot,distrb_clinic)
+./diags_on_lat_aux_grid.F90:        WORK1(:,:,iblock) = merge(W_E(:,:,k,iblock)*TAREA(:,:,iblock), c0, k <= KMT(:,:,iblock))
+./diags_on_lat_aux_grid.F90:          WORK1(:,:,iblock) = merge(W_I(:,:,k,iblock)*TAREA(:,:,iblock), c0, k <= KMT(:,:,iblock))
+./diags_on_lat_aux_grid.F90:          WORK1(:,:,iblock) = merge(W_SM(:,:,k,iblock)*TAREA(:,:,iblock), c0, k <= KMT(:,:,iblock))
+./domain.F90:      KMTG             ! global KMT (topography) field
+./drifters.F90:         write(nu)kmt
+./ecosys_mod.F90:            where (.not. LAND_MASK(:,:,iblock) .or. k > KMT(:,:,iblock))
+./ecosys_mod.F90:   where (.not. LAND_MASK(:,:,bid) .or. k > KMT(:,:,bid))
+./ecosys_mod.F90:      where (.not. LAND_MASK(:,:,bid) .or. k > KMT(:,:,bid))
+./ecosys_mod.F90:   where (.not. LAND_MASK(:,:,bid) .or. k > KMT(:,:,bid)) PAR_in = c0
+./ecosys_mod.F90:         call comp_CO3terms(bid, j, k, LAND_MASK(:,j,bid) .and. k <= KMT(:,j,bid), .true., &
+./ecosys_mod.F90:            call comp_CO3terms(bid, j, k, LAND_MASK(:,j,bid) .and. k <= KMT(:,j,bid), .false., &
+./ecosys_mod.F90:      call comp_co3_sat_vals(k, LAND_MASK(:,:,bid) .and. k <= KMT(:,:,bid), &
+./ecosys_mod.F90:            where (ZSATCALC(:,:,bid) == -c1 .and. KMT(:,:,bid) == k)
+./ecosys_mod.F90:            where (ZSATARAG(:,:,bid) == -c1 .and. KMT(:,:,bid) == k)
+./ecosys_mod.F90:            where (kk <= KMT(:,:,bid) .and. (WORK1 < WORK2))
+./ecosys_mod.F90:                    LAND_MASK(:,:,bid) .and. (k <= KMT(:,:,bid)))
+./ecosys_mod.F90:            WORK2 = merge(DZT(:,:,k,bid) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(dz(k) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                               c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(min(100.0e2_r8 - ztop, DZT(:,:,k,bid)) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                                  c0, ztop + DZT(:,:,k,bid) <= 100.0e2_r8 .and. k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(min(100.0e2_r8 - ztop, dz(k)) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                                  c0, ztop + dz(k) <= 100.0e2_r8 .and. k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(DZT(:,:,k,bid) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(dz(k) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                               c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(min(100.0e2_r8 - ztop, DZT(:,:,k,bid)) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                                  c0, ztop + DZT(:,:,k,bid) <= 100.0e2_r8 .and. k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(min(100.0e2_r8 - ztop, dz(k)) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                                  c0, ztop + dz(k) <= 100.0e2_r8 .and. k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(DZT(:,:,k,bid) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(dz(k) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                               c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(min(100.0e2_r8 - ztop, DZT(:,:,k,bid)) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                                  c0, ztop + DZT(:,:,k,bid) <= 100.0e2_r8 .and. k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(min(100.0e2_r8 - ztop, dz(k)) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                                  c0, ztop + dz(k) <= 100.0e2_r8 .and. k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(DZT(:,:,k,bid) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(dz(k) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                               c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(min(100.0e2_r8 - ztop, DZT(:,:,k,bid)) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                                  c0, ztop + DZT(:,:,k,bid) <= 100.0e2_r8 .and. k<=KMT(:,:,bid))
+./ecosys_mod.F90:            WORK2 = merge(min(100.0e2_r8 - ztop, dz(k)) * WORK1, c0, k<=KMT(:,:,bid))
+./ecosys_mod.F90:                                  c0, ztop + dz(k) <= 100.0e2_r8 .and. k<=KMT(:,:,bid))
+./ecosys_mod.F90:         if (LAND_MASK(i,j,bid) .and. k <= KMT(i,j,bid)) then
+./ecosys_mod.F90:         if (LAND_MASK(i,j,bid) .and. (k == KMT(i,j,bid))) then
+./ecosys_mod.F90:            if (k == KMT(i,j,bid)) then
+./ecosys_mod.F90:            where (.not. LAND_MASK(:,:,iblock) .or. k > KMT(:,:,iblock)) &
+./ecosys_mod.F90:            where (.not. LAND_MASK(:,:,iblock) .or. k > KMT(:,:,iblock)) &
+./ecosys_mod.F90:            where (.not. LAND_MASK(:,:,iblock) .or. k > KMT(:,:,iblock)) &
+./ecosys_mod.F90:         if (KMT(i,j,iblock) > 0 .and. KMT(i,j,iblock) < km) then
+./ecosys_mod.F90:            do k=KMT(i,j,iblock)+1,km
+./ecosys_mod.F90:            FESEDFLUX(i,j,KMT(i,j,iblock),iblock) = FESEDFLUX(i,j,KMT(i,j,iblock),iblock) + subsurf_fesed
+./ecosys_mod.F90:         where (.not. LAND_MASK(:,:,iblock) .or. k > KMT(:,:,iblock)) &
+./ecosys_mod.F90:                                 domAreaName='TAREA', domMaskName='KMT',       &
+./forcing.F90:         where (KMT(:,:,iblock) > 0)
+./forcing.F90:         where (KMT(:,:,iblock) > 0)
+./forcing.F90:            where (KMT(:,:,iblock) > 0)
+./forcing.F90:            where (KMT(:,:,iblock) > 0) ! convert to kg(freshwater)/m^2/s
+./forcing.F90:            where (KMT(:,:,iblock) > 0) ! convert to kg(freshwater)/m^2/s
+./forcing.F90:         where (KMT(:,:,iblock) > 0)
+./forcing.F90:            where (KMT(:,:,iblock) > 0)
+./forcing.F90:            where (KMT(:,:,iblock) > 0) ! convert to kg(freshwater)/m^2/s
+./forcing_sfwf.F90:                               c0, k <= KMT(:,:,iblock) .and.       &
+./forcing_sfwf.F90:                               c0, k <= KMT(:,:,iblock) .and.   &
+./forcing_sfwf.F90:      where (KMT(:,:,iblock) > 0)
+./forcing_sfwf.F90:      where (KMT(:,:,iblock) > 0 .and. MASK_SR(:,:,iblock) == 0) 
+./forcing_sfwf.F90:                 c0, KMT(:,:,iblock) > 0 .and. MASK_SR(:,:,iblock) > 0)
+./forcing_sfwf.F90:                                      KMT(:,:,iblock) > 0 .and.   &
+./forcing_sfwf.F90:                                      c0, KMT(:,:,iblock) > 0 .and.   &
+./forcing_sfwf.F90:                        k <= KMT(:,:,iblock) .and.               &
+./forcing_sfwf.F90:                        k <= KMT(:,:,iblock) .and.               &
+./forcing_sfwf.F90:      where (KMT(:,:,iblock) > 0)
+./forcing_sfwf.F90:      where (KMT(:,:,iblock) > 0 .and. MASK_SR(:,:,iblock) == 0)
+./forcing_sfwf.F90:        where (KMT(:,:,iblock) > 0)
+./forcing_sfwf.F90:                 c0, KMT(:,:,iblock) > 0 .and. MASK_SR(:,:,iblock) > 0)
+./forcing_sfwf.F90:                                      KMT(:,:,iblock) > 0 .and.   &
+./forcing_sfwf.F90:                                      c0, KMT(:,:,iblock) > 0 .and.   &
+./forcing_sfwf.F90:                        k <= KMT(:,:,iblock) .and.               &
+./forcing_sfwf.F90:                        k <= KMT(:,:,iblock) .and.               &
+./forcing_shf.F90:      where (KMT(:,:,iblock) > 0)
+./forcing_shf.F90:      where (KMT(:,:,iblock) > 0 .and. MASK_SR(:,:,iblock) == 0)
+./forcing_shf.F90:      where (KMT(:,:,iblock) > 0)
+./forcing_shf.F90:      where (KMT(:,:,iblock) > 0 .and. MASK_SR(:,:,iblock) == 0)
+./forcing_shf.F90:      where (KMT(:,:,iblock) == 0) OCN_WGT(:,:,iblock) = c0
+./grid.F90:      kmt_kmin, 	    &! minimum allowed non-zero KMT value
+./grid.F90:                       ! for use in computing KMT internally
+./grid.F90:   !dir$ attributes offload : mic :: KMT
+./grid.F90:      KMT            ,&! k index of deepest grid cell on T grid
+./grid.F90:      KMTOLD           ! KMT field before smoothing
+./grid.F90:      KMTN,KMTS,KMTE,KMTW   ,&! KMT field at neighbor points
+./grid.F90:      KMTEE,KMTNN      ! KMT field 2 cells away for upwind stencil
+./grid.F90:      topography_opt,       &! topography (KMT) option
+./grid.F90:!  decomposition setup (ULAT, ULON, KMT).
+./grid.F90:!  set up topography by getting global KMT field (used for
+./grid.F90:!      move this code into init_overflows2, in case KMT needs modification
+./grid.F90:      where (KMT /= 0) KMT = km
+./grid.F90:      call gather_global(KMT_G, KMT, master_task, distrb_clinic)
+./grid.F90:            if (KMT(i,j,n) == k) then
+./grid.F90:      KMU(i,j,n) = min(KMT(i,j  ,n),KMT(i+1,j  ,n), &
+./grid.F90:                       KMT(i,j+1,n),KMT(i+1,j+1,n))
+./grid.F90:               if (k == KMT(i,j,n)) HT(i,j,n) = zw(k-1) + DZT(i,j,k,n)
+./grid.F90:               if (k == KMT(i,j,n)) HT(i,j,n) = zw(k)
+./grid.F90:      WORK = merge(TAREA, c0, k <= KMT)
+./grid.F90:      WORK = merge(TAREA*dz(k), c0, k <= KMT)
+./grid.F90:   nocean_t = global_sum(KMT, distrb_clinic, field_loc_center)
+./grid.F90:!  Generates KMT field based on an input file containing
+./grid.F90:      kmt_global       ! flag for generating only global KMT field
+./grid.F90:!  compute global KMT field (for use in setting up domain)
+./grid.F90:!  convert bathymetry input to global kmt array
+./grid.F90:                                 'KMT non-zero at meridional boundary')
+./grid.F90:!  otherwise, scatter global into local KMT field
+./grid.F90:      call scatter_global(KMT, KMT_G, master_task, distrb_clinic, &
+./grid.F90:!  Generates simple KMT field with idealized land masses
+./grid.F90:      kmt_global       ! flag for generating only global KMT field
+./grid.F90:!  compute global KMT field (for use in setting up domain)
+./grid.F90:!  otherwise, set up local KMT field
+./grid.F90:                     KMT(i,j,n) = KMT_G(ig,jg)
+./grid.F90:                     KMT(i,j,n) = 0
+./grid.F90:               KMT(:,j,n) = 0
+./grid.F90:!  Reads in KMT field from file
+./grid.F90:      topography_file     ! input file containing KMT field
+./grid.F90:      kmt_global       ! flag for generating only global KMT field
+./grid.F90:!  read global KMT field (for use in setting up domain)
+./grid.F90:!  otherwise read KMT field from file
+./grid.F90:      call scatter_global(KMT, KMT_G, master_task, distrb_clinic, &
+./grid.F90:!  Removes isolated points from grid (KMT field)
+./grid.F90:        land   = k.gt.KMT(i,j,n)
+./grid.F90:        lande  = k.gt.KMT(i+1,j,n)
+./grid.F90:        landw  = k.gt.KMT(i-1,j,n)
+./grid.F90:        landn  = k.gt.KMT(i,j+1,n)
+./grid.F90:        lands  = k.gt.KMT(i,j-1,n)
+./grid.F90:            KMT(i,j,n) = KMT(i,j,n) - 1 
+./grid.F90:            if ( KMT(i,j,n) .lt. kmt_kmin) then
+./grid.F90:   call POP_HaloUpdate(KMT, POP_haloClinic, POP_gridHorzLocCenter,  & 
+./grid.F90:         'remove_isolated_points: error updating kmt halo')
+./grid.F90:!  Removes isolated points from grid (KMT field)
+./grid.F90:!  (KMU field before modifying KMT field)
+./grid.F90:      KMU(i,j,n) = min(KMT(i,j  ,n),KMT(i+1,j  ,n), &
+./grid.F90:                       KMT(i,j+1,n),KMT(i+1,j+1,n))
+./grid.F90:!  if all KMUs surrounding a T point are zero, set KMT = 0.
+./grid.F90:         KMT   (i,j,n) = 0
+./grid.F90:   call POP_HaloUpdate(KMT, POP_haloClinic, POP_gridHorzLocCenter,  & 
+./grid.F90:         'remove_points: error updating kmt halo')
+./grid.F90:!  This routine smooths topography to create new KMT, depth fields
+./grid.F90:!  The depth field HT is constructed from the KMT field and
+./grid.F90:!  a new KMT field is constructed from it.
+./grid.F90:   KMTOLD = KMT
+./grid.F90:      where (k == KMT) HT = zw(k)
+./grid.F90:   where (KMT > 0)
+./grid.F90:   where ((KMT /= 0) .and. (IWORK /= 0))
+./grid.F90:!  new KMT field
+./grid.F90:      where (HTNEW > zt(k) .and. HTNEW <= zt(k+1)) KMT = k
+./grid.F90:   where (HTNEW > zt(k)) KMT = km
+./grid.F90:   call POP_HaloUpdate(KMT, POP_haloClinic, POP_gridHorzLocCenter,  & 
+./grid.F90:         'smooth_topography: error updating kmt halo')
+./grid.F90:!  instead of logical masks and also KMT arrays for neighbor points.
+./grid.F90:   where (KMT >= 1)
+./grid.F90:!  depth level fields (KMT,KMU) to north,south,east,west
+./grid.F90:   KMTN = eoshift(KMT,dim=2,shift=+1)
+./grid.F90:   KMTS = eoshift(KMT,dim=2,shift=-1)
+./grid.F90:   KMTE = eoshift(KMT,dim=1,shift=+1)
+./grid.F90:   KMTW = eoshift(KMT,dim=1,shift=-1)
+./grid.F90:   KMTEE = eoshift(KMT,dim=1,shift=2)
+./grid.F90:   KMTNN = eoshift(KMT,dim=2,shift=2)
+./grid.F90:      WORK = merge(TAREA, c0, 1 <= KMT .and. REGION_MASK == -region)
+./grid.F90:                      k <= KMT .and. REGION_MASK == -region)
+./grid.F90:!  if the depth-level field KMT has been smoothed, fill in
+./grid.F90:!* given the smoothed KMT field and the original unsmoothed field
+./grid.F90:     MASKNEW = (k <= KMT) .and. (.not. MASKOLD)
+./hmix_aniso.F90:      KMU_G   			! kmt array at U points
+./hmix_del2.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del2.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del2.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del2.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del2.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del2.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del2.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del2.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del2.F90:                          c0, KMT(:,:,bid) > k)
+./hmix_del2.F90:                          c0, KMT(:,:,bid) > k)
+./hmix_del4.F90:      where (k > KMT(:,:,bid) .or. k > KMTN(:,:,bid)) CN = c0
+./hmix_del4.F90:      where (k > KMT(:,:,bid) .or. k > KMTS(:,:,bid)) CS = c0
+./hmix_del4.F90:      where (k > KMT(:,:,bid) .or. k > KMTE(:,:,bid)) CE = c0
+./hmix_del4.F90:      where (k > KMT(:,:,bid) .or. k > KMTW(:,:,bid)) CW = c0
+./hmix_del4.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del4.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del4.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del4.F90:                                   (k <= KMT (:,:,bid)))
+./hmix_del4.F90:                          c0, KMT(:,:,bid) > k)
+./hmix_del4.F90:                          c0, KMT(:,:,bid) > k)
+./hmix_gm.F90:         ah_bkg_bottom, &       ! backgroud horizontal diffusivity at k = KMT
+./hmix_gm.F90:!     ah_bkg_bottom   : background horizontal diffusion at k=KMT (= 0)
+./hmix_gm.F90:         where ( k < KMT(:,:,iblock) ) 
+./hmix_gm.F90:             if ( k < KMT(i,j,iblock) ) then
+./hmix_gm.F90:               if ( k == KMT(i-1,j+1,iblock)  .or.  &
+./hmix_gm.F90:                    k == KMT(i  ,j+1,iblock)  .or.  &
+./hmix_gm.F90:                    k == KMT(i+1,j+1,iblock)  .or.  &
+./hmix_gm.F90:                    k == KMT(i-1,j  ,iblock)  .or.  &
+./hmix_gm.F90:                    k == KMT(i+1,j  ,iblock)  .or.  &
+./hmix_gm.F90:                    k == KMT(i-1,j-1,iblock)  .or.  &
+./hmix_gm.F90:                    k == KMT(i  ,j-1,iblock)  .or.  &
+./hmix_gm.F90:                    k == KMT(i+1,j-1,iblock) )      &
+./hmix_gm.F90:      CX = merge(HYX(:,:,bid)*p25, c0, (k <= KMT (:,:,bid))   &
+./hmix_gm.F90:      CY = merge(HXY(:,:,bid)*p25, c0, (k <= KMT (:,:,bid))   &
+./hmix_gm.F90:                       if (kk == KMT(i,j,bid)) then
+./hmix_gm.F90:              where ( kk <= KMT(:,:,bid) ) 
+./hmix_gm.F90:      KMASK = merge(c1, c0, k < KMT(:,:,bid))
+./hmix_gm.F90:             if( k == KMT(i,j,bid)) then
+./hmix_gm.F90:                 KMASKprev = merge(c1, c0, k-1 < KMT(i,j,bid))
+./hmix_gm.F90:                 KMASKprev = merge(c1, c0, km-1 < KMT(i,j,bid))        
+./hmix_gm.F90:        UIB = merge( WORK1, c0, k < KMT(:,:,bid)  &
+./hmix_gm.F90:        VIB = merge( WORK2, c0, k < KMT(:,:,bid)  &
+./hmix_gm.F90:        WORK1 = merge( UIT(:,:,bid) - UIB, c0, k <= KMT(:,:,bid)  &
+./hmix_gm.F90:        WORK2 = merge( VIT(:,:,bid) - VIB, c0, k <= KMT(:,:,bid)  &
+./hmix_gm.F90:            if ( k < KMT(i,j,bid) ) then
+./hmix_gm.F90:                      c0, KMT(:,:,bid) > k)
+./hmix_gm.F90:!                if ( k <= KMT(i,j,bid) ) then
+./hmix_gm.F90:!                if ( k <= KMT(i,j,bid) ) then
+./hmix_gm.F90:            where (k < KMT(:,:,bid))
+./hmix_gm.F90:            where (k < KMT(:,:,bid))
+./hmix_gm.F90:          kk = KMT(i,j,bid)
+./hmix_gm.F90:      where (KMT(:,:,bid) <= k1)     ! KAPPA_LATERAL=3.0e6 when depth < 100m
+./hmix_gm.F90:        where (k < KMT(:,:,bid))
+./hmix_gm.F90:      where ( k < KMT(:,:,bid) )
+./hmix_gm.F90:        where ( k < KMT(:,:,bid) )
+./hmix_gm.F90:        where ( k > 1  .and.  k == KMT(:,:,bid) )
+./hmix_gm.F90:        where (k < KMT(:,:,bid))
+./hmix_gm.F90:         kk,            & ! temporary value of KMT
+./hmix_gm.F90:          KMASKE = merge(c1, c0, k <= KMT(:,:,bid) .and. &
+./hmix_gm.F90:          KMASKN = merge(c1, c0, k <= KMT(:,:,bid) .and. &
+./hmix_gm.F90:          kk = KMT(i,j,bid)
+./hmix_gm.F90:      where ( KMT(:,:,bid) <= k_min )        ! KAPPA_LATERAL = kappa_min 
+./hmix_gm.F90:      where ( k < KMT(:,:,bid) )
+./hmix_gm.F90:        where ( k < KMT(:,:,bid) )
+./hmix_gm.F90:        where ( k == KMT(:,:,bid) )
+./hmix_gm.F90:      K_MIN = merge( km+1, 0, KMT(:,:,bid) /= 0 )  
+./hmix_gm.F90:                 if ( k < KMT(i,j,bid) ) then
+./hmix_gm.F90:                ( k <= KMT(i,j,bid) )  .and.                 &
+./hmix_gm.F90:          if ( ( k >= K_MIN(i,j) ) .and. ( k < KMT(i,j,bid) ) .and. &
+./hmix_gm.F90:        if ( k == KMT(i,j,bid)-1 ) then
+./hmix_gm.F90:         if ( ( k > K_MIN(i,j) ) .and. ( k <= KMT(i,j,bid) ) ) then
+./hmix_gm.F90:      COMPUTE_TLT = merge(.true., .false., KMT(:,:,bid) /= 0)
+./hmix_gm.F90:                      if ( KMT(i,j,bid) == 0  .or.  K_START(i,j) > KMT(i,j,bid)  .or.  &
+./hmix_gm.F90:                      ( K_START(i,j) == KMT(i,j,bid)  .and.  K_SUB(i,j) == kbt ) ) then
+./hmix_gm.F90:                         K_START(i,j) < KMT(i,j,bid)  .and.  K_START(i,j) == k ) then
+./hmix_gm.F90:                         if ( COMPUTE_TLT(i,j)  .and.  K_START(i,j) <= KMT(i,j,bid)  .and. &
+./hmix_gm.F90:                         if ( COMPUTE_TLT(i,j)  .and.  K_START(i,j) < KMT(i,j,bid)  .and. &
+./hmix_gm.F90:                         if ( COMPUTE_TLT(i,j)  .and.  K_START(i,j) == KMT(i,j,bid)  .and. &
+./hmix_gm.F90:                      if ( KMT(i,j,bid) /= 0  .and.  &
+./hmix_gm.F90:                      if ( KMT(i,j,bid) == 0  .and.  &
+./hmix_gm.F90:                       TLT%K_LEVEL(i,j,bid) < KMT(i,j,bid)  .and.  &
+./hmix_gm.F90:                       TLT%K_LEVEL(i,j,bid) < KMT(i,j,bid)  .and. &
+./hmix_gm.F90:          LMASK(i,j) = LMASK(i,j) .and. TLT%K_LEVEL(i,j,bid) + 1 < KMT(i,j,bid)
+./hmix_gm.F90:                if (KMT(i,j,bid) /= 0) then
+./hmix_gm.F90:                if ((KMT(i,j,bid) /= 0) .AND. (TLT%THICKNESS(i,j,bid) > eps))then
+./hmix_gm.F90:                       .and.  k <= KMT(i,j,bid) ) then
+./hmix_gm.F90:                .and.  k <= KMT(i,j,bid) ) then
+./hmix_gm.F90:                       .and.  k <= KMT(i,j,bid) ) then
+./hmix_gm.F90:                 .and.  k <= KMT(i,j,bid) ) then
+./hmix_gm.F90:              .and.  k <= KMT(i,j,bid)  .and.                           &
+./hmix_gm.F90:                  .and.  k <= KMT(i,j,bid) ) then
+./hmix_gm_submeso_share.F90:   use grid, only: KMTE, KMT, KMTN
+./hmix_gm_submeso_share.F90:                if ( kk <= KMT(i,j,bid) .and. kk <= KMTE(i,j,bid) ) then
+./hmix_gm_submeso_share.F90:                if ( kk <= KMT(i,j,bid) .and. kk <= KMTN(i,j,bid) ) then
+./hmix_gm_submeso_share.F90:                 KMASK = merge(c1, c0, kk < KMT(i,j,bid))
+./hmix_gm_submeso_share.F90:                 KMASKE = merge(c1, c0, kk+1 <= KMT(i,j,bid) .and.  &
+./hmix_gm_submeso_share.F90:                 KMASKN = merge(c1, c0, kk+1 <= KMT(i,j,bid) .and.  &
+./hmix_gm_submeso_share.F90:                 kmaskeim1 = merge(c1, c0, kk+1 <= KMT(i-1,j,bid) .and.  &
+./hmix_gm_submeso_share.F90:                 kmasknjm1 = merge(c1, c0, kk+1 <= KMT(i,j-1,bid) .and.  &
+./hmix_gm_submeso_share.F90:              if ( kk+1 <= KMT(i,j,bid) ) then
+./horizontal_mix.F90:   use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr
+./horizontal_mix.F90:        !where (k <= KMT(:,:,bid)) WORK = DZT(:,:,k,bid)*HDTK(:,:,1)
+./horizontal_mix.F90:        !where (k <= KMT(:,:,bid)) WORK = dz(k)*HDTK(:,:,1)
+./horizontal_mix.F90:        !where (k <= KMT(:,:,bid)) WORK = DZT(:,:,k,bid)*HDTK(:,:,2)
+./horizontal_mix.F90:        !where (k <= KMT(:,:,bid)) WORK = dz(k)*HDTK(:,:,2)
+./horizontal_mix.F90:                             ,c0, k < KMT(:,:,bid))*dzr(k)
+./horizontal_mix.F90:                             ,c0, k < KMT(:,:,bid))*dzr(k)
+./horizontal_mix_unified.F90:         ah_bkg_bottom_unified, &       ! backgroud horizontal diffusivity at k = KMT
+./horizontal_mix_unified.F90: use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr,KMTE, KMT,&
+./horizontal_mix_unified.F90:   KMT_unified = KMT
+./horizontal_mix_unified.F90:   print *,"KMT is",KMT_UNIFIED(45,45,1),KMT(45,45,1)
+./horizontal_mix_unified.F90:       !!$OMP PARALLEL DO DEFAULT(NONE)PRIVATE(i,j)SHARED(reference_depth,ML_DEPTH,KMT,WORK3,WORK2,WORK1,TIME_SCALE_UNIFIED,HLS,SF_SUBM_X_UNIFIED,SF_SUBM_Y_UNIFIED) &
+./horizontal_mix_unified.F90:            print *,"KMT(45,45,bid)",KMT_UNIFIED(i,j,bid)
+./iage_mod.F90:   use grid, only: KMT, n_topo_smooth, fill_points
+./iage_mod.F90:            where (k > KMT(:,:,iblock))
+./ice.F90:       partial_bottom_cells, KMT, DZT, DZ, freq_opt_nmonth, dt, tmix_matsuno,&
+./ice.F90:          where (k <= KMT(:,:,bid)) &
+./ice.F90:          where (k <= KMT(:,:,bid)) &
+./ice.F90:     where ( k <= KMT(:,:,bid) )
+./ice.F90:     where (k <= KMT(:,:,bid))
+./ice.F90:   where ( k <= KMT(:,:,bid) )
+./initial.F90:   use grid, only: init_grid1, init_grid2, kmt, kmt_g, n_topo_smooth, zt,    &
+./initial.F90:!  KMT can be done (and NOT in init_grid2) for possible KMT mods; then
+./initial.F90:             where (k > KMT(:,:,iblock)) &
+./initial.F90:            where (k <= KMT(:,:,iblock))
+./initial.F90:            where (k <= KMT(:,:,iblock))
+./initial.F90:             where (k > KMT(:,:,iblock)) &
+./mix_submeso.F90:          if( KMT(i,j,bid) == 0 ) then
+./mix_submeso.F90:           if ( KMT(i,j,bid) > 0 ) then
+./mix_submeso.F90:           if ( KMT(i,j,bid) > 0 ) then
+./mix_submeso.F90:           if( KMT(i,j,bid) > 0 )then
+./mix_submeso.F90:            if( KMT(i,j,bid) == 0 ) then
+./mix_submeso.F90:             if ( KMT(i,j,bid) > 0 ) then
+./mix_submeso.F90:       !!$OMP PARALLEL DO DEFAULT(NONE)PRIVATE(i,j)SHARED(reference_depth,ML_DEPTH,KMT,WORK3,WORK2,WORK1,TIME_SCALE,HLS,SF_SUBM_X,SF_SUBM_Y) &
+./mix_submeso.F90:                    KMT(i,j,bid) >= k ) then
+./mix_submeso.F90:           USMB(i,j) = merge( WORK1(i,j), c0, k < KMT(i,j,bid) .and. k < KMTE(i,j,bid) )
+./mix_submeso.F90:           VSMB(i,j) = merge( WORK2(i,j), c0, k < KMT(i,j,bid) .and. k < KMTN(i,j,bid) )
+./mix_submeso.F90:            WORK1(i,j) = merge( USMT(i,j) - USMB(i,j), c0, k <= KMT(i,j,bid)  &
+./mix_submeso.F90:            WORK2(i,j) = merge( VSMT(i,j) - VSMB(i,j), c0, k <= KMT(i,j,bid)  &
+./mix_submeso.F90:         if ( k < KMT(i,j,bid)  .and.  ( zw(k) < max( ML_DEPTH(i,j),  &
+./mix_submeso.F90:             !if ( k <= KMT(i,j,bid) ) then
+./mix_submeso.F90:             !if ( k <= KMT(i,j,bid) ) then
+./mix_submeso.F90:      CX = merge(HYX(:,:,bid)*p25, c0, (k <= KMT (:,:,bid))   &
+./mix_submeso.F90:      CY = merge(HXY(:,:,bid)*p25, c0, (k <= KMT (:,:,bid))   &
+./mix_submeso.F90:            print *,"KMT(45,45,bid)",KMT(i,j,bid) 
+./mix_submeso.F90:      KMASK = merge(c1, c0, k < KMT(:,:,bid))
+./mix_submeso.F90:                  KMASKprev = merge(c1, c0, k-1 < KMT(i,j,bid))
+./mix_submeso.F90:                  KMASKprev = merge(c1, c0, k-1 < KMT(i,j,bid))
+./niw_mixing.F90:       where ( k >= KBL .and. k < KMT(:,:,bid) )
+./niw_mixing.F90:       where ( k >= KBL .and. k < KMT(:,:,bid) )
+./niw_mixing.F90:       where ( k >= KBL .and. k < KMT(:,:,bid) )
+./ocn_comp_mct.F90:   use grid,              only: TLAT, TLON, KMT
+./ocn_comp_mct.F90:          data(n) = float(KMT(i,j,iblock)) 
+./operators.F90:      if (k <= KMT(i,j,bid)) then
+./operators.F90:      if (k <= KMT(i,j,bid)) then
+./operators.F90:         do k=KMT(i,j,bid),1,-1
+./operators.F90:         do k=KMT(i,j,bid),1,-1
+./overflows.F90:! kmt changes if any
+./overflows.F90:         write(stdout,*) 'Overflows on with kmt topography changes out of range'
+./overflows.F90:! kmt locations
+./overflows.F90:!  scattering KMT_G to KMT, then modifying if desired, and finally 
+./overflows.F90:!  scatter KMT_G to KMT if topography_opt = file 
+./overflows.F90:!  modify KMT for overflows if desired and ccsm_startup run
+./overflows.F90:!  make kmt changes regardless of overflows_interactive
+./overflows.F90:!  This routine modifies kmt as required by overflows, if on
+./overflows.F90:      kmterr                ! error index for kmt changes
+./overflows.F90:!  search through kmt and modify for overflows
+./overflows.F90:                         write(stdout,100) KMT(i,j,iblock),ovf(n)%loc_kmt(m)%i, &
+./overflows.F90:                         100 format(' init_overflows_kmt: KMT = ',i5,&
+./overflows.F90:                         if( KMT(i,j,iblock) .ne. ovf(n)%loc_kmt(m)%korg ) then
+./overflows.F90:                         KMT(i,j,iblock) = ovf(n)%loc_kmt(m)%knew
+./overflows.F90:     200 format(' init_overflows_kmt: kmt inconsistencies for ',i3,' points',/ &
+./overflows.F90:                ' original kmt not equal to actual kmt')
+./overflows.F90:         call exit_POP(sigAbort,'ERROR kmt inconsistency for overflows')
+./overflows.F90:   call POP_HaloUpdate(KMT, POP_haloClinic, POP_gridHorzLocCenter,  &
+./overflows.F90:         ! kmt changes, if any
+./overflows.F90:1090     format(2x,i10,20x,'! number of kmt changes')
+./overflows.F90:1091        format(2x,i10,20x,'! i grid box index for kmt change')
+./overflows.F90:1092        format(2x,i10,20x,'! j grid box index for kmt change')
+./overflows.F90:! kmt changes, if any
+./overflows.F90:! kmt changes, if any
+./overflows.F90:                     if( k == KMT(i,j,iblock) ) then
+./overflows.F90:                     if( k == KMT(i,j,iblock) ) then
+./overflows.F90:                     if( k == KMT(i,j,iblock) ) then
+./overflows.F90:                     if( k == KMT(i,j,iblock) ) then
+./overflows.F90:                     if( k == KMT(i,j,iblock) ) then
+./overflows.F90:                     if( k == KMT(i,j,iblock) ) then
+./overflows.F90:                     if( k == KMT(i,j,iblock) ) then
+./overflows.F90:                     if( k == KMT(i,j,iblock) ) then
+./overflow_type.F90:      max_kmt      =   200,&  ! max no. overflow kmt changes
+./overflow_type.F90:   type, public :: ovf_kmtbox        ! overflow grid-box for kmt changes
+./overflow_type.F90:        korg              ,&  ! original kmt value
+./overflow_type.F90:        knew                  ! new kmt value
+./overflow_type.F90:!     kmt changes) given by src locations, transporting mean tracers from
+./overflow_type.F90:  ! kmt mods
+./overflow_type.F90:   integer   (int_kind)          :: num_kmt               ! no. of kmt changes
+./overflow_type.F90:      type      (ovf_kmtbox)        :: loc_kmt(max_kmt)      ! kmt locs
+./passive_tracers.F90:   use grid, only: partial_bottom_cells, DZT, KMT, dz, zw, &
+./passive_tracers.F90:                               c0, k<=KMT(:,:,bid))
+./passive_tracers.F90:                               c0, k<=KMT(:,:,bid))
+./passive_tracers.F90:                                  * TRACER_SOURCE(:,:,n), c0, k<=KMT(:,:,bid))
+./passive_tracers.F90:                                  * TRACER_SOURCE(:,:,n), c0, k<=KMT(:,:,bid))
+./passive_tracers.F90:                                  * TRACER(:,:,k,n,curtime,bid), c0, k<=KMT(:,:,bid))
+./passive_tracers.F90:                                     * TRACER(:,:,k,n,curtime,bid), c0, k<=KMT(:,:,bid))
+./passive_tracers.F90:                                     * TRACER(:,:,k,n,curtime,bid), c0, k<=KMT(:,:,bid))
+./passive_tracers.F90:                      * TRACER(:,:,k,n,oldtime,bid)) / c2dtt(k), c0, k<=KMT(:,:,bid))
+./passive_tracers.F90:                                  c0, k<=KMT(:,:,bid))
+./passive_tracers.F90:                                  c0, k<=KMT(:,:,bid))
+./restart.F90:       KMT, HU, TAREA_R
+./restart.F90:            where (k > KMT(:,:,iblock))
+./state_mod.F90:                               k <= KMT(ib:ie,jb:je,bid))
+./state_mod.F90:                               k <= KMT(ib:ie,jb:je,bid))
+./state_mod.F90:                         c0, KMT(:,:,bid) >= k)
+./state_mod.F90:                         c0, KMT(:,:,bid) >= k)
+./state_mod.F90:                         c0, KMT(:,:,bid) >= k)
+./state_mod.F90:                         c0, KMT(:,:,bid) >= k)
+./state_mod.F90:                     ,c0, KMT(:,:,bid) >= k)
+./state_mod.F90:                     ,c1, KMT(:,:,bid) >= k)
+./state_mod.F90:                  c0, KMT(:,:,bid) >= k)
+./state_mod.F90:                  c0, KMT(:,:,bid) >= k)
+./sw_absorption.F90:           where (k < KMT(:,:,bid))
+./sw_absorption.F90:           where (k < KMT(:,:,bid))
+./sw_absorption.F90:           where (k < KMT(:,:,bid))
+./sw_absorption.F90:           where (k < KMT(:,:,bid))
+./tavg.F90:            if (k > KMT(i  ,j,   iblock)   .and.  &
+./tavg.F90:                k > KMT(i+1,j,   iblock)   .and.  &
+./tavg.F90:                k > KMT(i  ,j+1, iblock)   .and.  &
+./tavg.F90:                k > KMT(i+1,j+1, iblock))   then
+./tavg.F90:                     RMASK(:,:) = merge(c1, c0, k <= KMT(:,:,iblock)) 
+./tavg.F90:   !*** KMT
+./tavg.F90:        'KMT', dim1=i_dim, dim2=j_dim,                        &
+./tavg.F90:         i2d_array =KMT(:,:,:) )
+./tavg.F90:         trim(ccsm_time_invar(num,ns)%short_name) == 'KMT'          .or.   &
+./tavg.F90:                              k > KMT(:,:,iblock))
+./tavg.F90:        if (KMT(i,j,iblock) == 0) then
+./tavg.F90:            if (KMT(ii,jj,iblock) /= 0) then
+./tidal_mixing.F90:       where ( k < KMT(:,:,iblock) )
+./tidal_mixing.F90:       where ( k <= KMT(:,:,iblock) )
+./topostress.F90:      where (KMT(:,:,iblock) /= 0)
+./topostress.F90:   where (KMT(:,:,bid) > 0) 
+./topostress.F90:   where ((KMT(:,:,bid) /= 0) .and. (NB /= 0)) 
+./vertical_mix.F90:         VTF(:,:,n,bid) = merge(STF(:,:,n), c0, KMT(:,:,bid) >= 1)
+./vertical_mix.F90:                      ,c0, KMT(:,:,bid) > k)
+./vertical_mix.F90:                         k == KMT(:,:,bid) .and.        &
+./vertical_mix.F90:                             c0, k <= KMT(:,:,bid))
+./vertical_mix.F90:                      ,c0, KMT(:,:,bid) > k)
+./vertical_mix.F90:                         k == KMT(:,:,bid) .and.       &
+./vertical_mix.F90:                             c0, k <= KMT(:,:,bid))
+./vertical_mix.F90:           if (k > KMT(i,j,bid)) then
+./vertical_mix.F90:              if (k == KMT(i,j,bid)) then
+./vertical_mix.F90:           if (k > KMT(i,j,bid)) then
+./vertical_mix.F90:              if (k == KMT(i,j,bid)) then
+./vertical_mix.F90:         if (k < KMT(i,j,bid)) &
+./vertical_mix.F90:                             ,c0, k < KMT(:,:,bid))
+./vertical_mix.F90:                                k == KMT(:,:,bid) .and.        &
+./vertical_mix.F90:                             ,c0, k < KMT(:,:,bid))
+./vertical_mix.F90:                                k == KMT(:,:,bid) .and.        &
+./vertical_mix.F90:             if (k > KMT(i,j,bid)) then
+./vertical_mix.F90:                if (k == KMT(i,j,bid)) then
+./vertical_mix.F90:             if (k > KMT(i,j,bid)) then
+./vertical_mix.F90:                if (k == KMT(i,j,bid)) then
+./vertical_mix.F90:         if (k < KMT(i,j,bid)) &
+./vertical_mix.F90:                  where ((RHOK > RHOKP) .and. (k < KMT(:,:,bid)))
+./vertical_mix.F90:                  where ((RHOK > RHOKP) .and. (k < KMT(:,:,bid)))
+./vmix_const.F90:      where ((RHOK > RHOKP) .and. (k < KMT(:,:,bid)))
+./vmix_kpp.F90:         if (k >= KMT(i,j,bid)) then
+./vmix_kpp.F90:   where (KMT(:,:,bid) == 1)
+./vmix_kpp.F90:         where (k <= KMT(:,:,bid))
+./vmix_kpp.F90:         where (k <= KMT(:,:,bid))
+./vmix_kpp.F90:      WORK0(:,:,k)   = merge(RI_LOC, WORK0(:,:,k-1), k <= KMT(:,:,bid))
+./vmix_kpp.F90:            if (KMT(i,j,bid) >= 3) then
+./vmix_kpp.F90:        where ( k == KMT(:,:,bid)-1  .or.  k == KMT(:,:,bid)-2 )
+./vmix_kpp.F90:       if( k < KMT(i,j,bid) ) then
+./vmix_kpp.F90:        if( k < KMT(i,j,bid) ) then
+./vmix_kpp.F90:         if ( k >= KMT(i,j,bid) ) then
+./vmix_kpp.F90:!  max values when Ricr never satisfied are KBL = KMT and
+./vmix_kpp.F90:!  HBLT = -zgrid(KMT)
+./vmix_kpp.F90:   KBL = merge(KMT(:,:,bid), 1, (KMT(:,:,bid) > 1))
+./vmix_kpp.F90:                       c0, KMT(:,:,bid) >= kl)
+./vmix_kpp.F90:                      c0, KMT(:,:,bid) >= kl)
+./vmix_kpp.F90:         if ( KBL(i,j) == KMT(i,j,bid) .and.  &
+./vmix_kpp.F90:         if (k-1 >= KMT(i,j,bid)) DBLOC(i,j,k-1) = c0
+./vmix_kpp.F90:       if ( KMT(i,j,bid) /= 0 ) then
+./vmix_kpp.F90:         if ( KMT(i-1,j,bid) == 0 ) then
+./vmix_kpp.F90:         if ( KMT(i+1,j,bid) == 0 ) then
+./vmix_kpp.F90:         if ( KMT(i,j-1,bid) == 0 ) then
+./vmix_kpp.F90:         if ( KMT(i,j+1,bid) == 0 ) then
+./vmix_kpp.F90:         if ( k == KMT(i,j,bid)  .and.  WORK2(i,j) > ztmp ) then
+./vmix_kpp.F90:           if ( KMT(i,j,bid) /= 0            .and.  &
+./vmix_rich.F90:         if (k < KMT(i,j,bid)) then
+./vmix_rich.F90:         if (k < KMT(i,j,bid)) then

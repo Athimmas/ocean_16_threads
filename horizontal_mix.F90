@@ -630,11 +630,11 @@
 
         HDTK=HDTK+TDTK(:,:,:,k)
 
-         if(my_task == master_task .and. nsteps_total == 3 .and. k == 3)then
+         !if(my_task == master_task .and. nsteps_total == 3 .and. k == 3)then
 
            !print *,"org2",HDTK(3,3,1)
 
-         endif
+         !endif
 
 
 

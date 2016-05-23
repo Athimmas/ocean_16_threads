@@ -55,7 +55,7 @@
 ! !PUBLIC MEMBER FUNCTIONS:
 
    public :: init_horizontal_mix_unified, &
-             hdifft_unified,tracer_diffs_and_isopyc_slopes_unified
+             hdifft_unified,tracer_diffs_and_isopyc_slopes_unified,smooth_hblt_unified,state_unified,submeso_flux_unified,transition_layer_unified,buoyancy_frequency_dependent_profile_unified,merged_streamfunction_unified,apply_vertical_profile_to_isop_hor_diff_unified
 
 !EOP
 !BOC
@@ -399,7 +399,10 @@
  use vertical_mix
  use omp_lib
  use hmix_gm
+ use hmix_gm_submeso_share
+ use vmix_kpp 
 
+   if( .not. allocated (HXY_UNIFIED)) then
 
    print *,"Intializing unified grids"
 
@@ -433,8 +436,10 @@
    allocate (KPP_HBLT_UNIFIED(nx_block,ny_block,nblocks_clinic), &
             BOLUS_SP_UNIFIED(nx_block,ny_block,nblocks_clinic))
 
-   HXY_UNIFIED      = c0
-   HYX_UNIFIED      = c0
+   endif
+
+   HXY_UNIFIED      = HXY
+   HYX_UNIFIED      = HYX
    SLX_UNIFIED      = c0
    SLY_UNIFIED      = c0
    TX_UNIFIED       = c0
@@ -443,6 +448,12 @@
    RX_UNIFIED       = c0
    RY_UNIFIED       = c0
    RZ_SAVE_UNIFIED  = c0
+   HMXL_unified = HMXL
+   KPP_HBLT_UNIFIED = KPP_HBLT
+
+
+
+   print *,"HYX is",HYX_UNIFIED(45,45,1),HYX(45,45,1)
 
 !! initialization for state 
 
@@ -453,7 +464,11 @@
 
 !! initialization for grid 
 
+   if( .not. allocated(DZT_unified) ) then
+
    allocate (DZT_unified(nx_block,ny_block,0:km+1,max_blocks_clinic))
+
+   endif
 
    pressz_unified = pressz
    KMT_unified = KMT
@@ -477,12 +492,17 @@
    HUS_UNIFIED = HUS
    HUW_UNIFIED = HUW
 
+   print *,"KMT is",KMT_UNIFIED(45,45,1),KMT(45,45,1)
 
 !! initialization for mix_submeso
+
+   if( .not. allocated(TIME_SCALE_UNIFIED)) then
 
    allocate (TIME_SCALE_UNIFIED(nx_block,ny_block,nblocks_clinic))
 
    allocate (FZTOP_SUBM_UNIFIED(nx_block,ny_block,nt,nblocks_clinic))
+
+   endif
 
    TIME_SCALE_UNIFIED = TIME_SCALE
 
@@ -493,11 +513,17 @@
 
 !! Variables related to vmix_kpp
 
+  if( .not. allocated (zgrid_unified )) then
+
   allocate  (zgrid_unified(0:km+1)) 
+
+  endif
 
   zgrid_unified = zgrid
 
 !! variables for allocatng hmix_gm variables
+
+  if(.not. allocated(SLA_SAVE_UNIFIED )) then
 
   allocate (SLA_SAVE_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
   allocate (RB_UNIFIED(nx_block,ny_block,nblocks_clinic))
@@ -522,6 +548,8 @@
   allocate (VDC_UNIFIED(nx_block,ny_block,0:km+1,2,nblocks_clinic))
 
   allocate (VDC_GM_UNIFIED(nx_block,ny_block,km,nblocks_clinic)) 
+
+  endif
 
          KAPPA_ISOP_UNIFIED = KAPPA_ISOP
          KAPPA_THIC_UNIFIED = KAPPA_THIC
@@ -1703,6 +1731,20 @@
                                  .and. (k <= KMTE_UNIFIED(:,:,bid)))
       CY = merge(HXY_UNIFIED(:,:,bid)*p25, c0, (k <= KMT_UNIFIED (:,:,bid))   &
                                  .and. (k <= KMTN_UNIFIED(:,:,bid)))
+
+            i = 45
+            j = 45
+             
+
+            if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 )then
+
+            print *,"changed"
+            print *,"HYX(45,45,bid)",HYX_UNIFIED(i,j,bid)
+            print *,"KMT(45,45,bid)",KMT_UNIFIED(i,j,bid)
+            print *,"CX(45,45,bid)",CX(i,j)
+
+            endif
+
       
       KMASK = merge(c1, c0, k < KMT_UNIFIED(:,:,bid))
             
@@ -1720,6 +1762,22 @@
             do i=1,nx_block
 
               if(i <= nx_block-1 ) then
+
+            !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 - 1 .and. j == 45 .and. n == 1)then
+
+                   !print *,"changed in flux"
+                   !print *,"SF_SUBM_X(i+1,j,iwest,kbt,k,bid) contribution is",SF_SUBM_X_UNIFIED(i+1,j,iwest,kbt,k,bid)
+                   !print *,"SF_SUBM_X(i+1,j,iwest,ktp,k,bid) contribution is",SF_SUBM_X_UNIFIED(i+1,j,iwest,ktp,k,bid)
+                   !print *,"SF_SUBM_X(i  ,j,ieast,kbt,k,bid) contribution is",SF_SUBM_X_UNIFIED(i  ,j,ieast,kbt,k,bid)
+                   !print *,"SF_SUBM_X(i  ,j,ieast,ktp,k,bid)  contributionis",SF_SUBM_X_UNIFIED(i  ,j,ieast,ktp,k,bid)
+                   !print *,"CX(i,j) contribution is",CX(i,j)
+                   !print *,"TZ(i,j,k,n,bid) is",TZ_UNIFIED(i,j,k,n,bid)
+                   !print *,"TZ(i,j,kp1,n,bid) ",TZ_UNIFIED(i,j,kp1,n,bid)
+                   !print *,"TZ(i+1,j,k,n,bid)",TZ_UNIFIED(i+1,j,k,n,bid)
+                   !print *,"TZ(i+1,j,kp1,n,bid)",TZ_UNIFIED(i,j,kp1,n,bid)
+
+            !endif
+
 
               FX(i,j,n) = CX(i,j)                          &
                * ( SF_SUBM_X_UNIFIED(i  ,j,ieast,ktp,k,bid) * TZ_UNIFIED(i,j,k,n,bid)                      &
@@ -1817,14 +1875,19 @@
 
                   endif 
 
-                  !if(fzprev /= FZTOP_SUBM(i,j,n,bid)) then 
-                  !   print *,"wrong value OH NO",k
-                  !else
-                  !   print *,"its okay Yeah",k
-                  !endif    
-
                   fz = -KMASK(i,j) * p25    &
                       * (WORK1(i,j) + WORK2(i,j))
+
+             !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+
+                   !print *,"changed before in flux"
+                   !print *,"FX(i,j,n) contribution is",FX(i,j,n)
+                   !print *,"FX(i-1,j,n) contribution is",FX(i-1,j,n)
+                   !print *,"FY(i,j,n) contribution is",FY(i,j,n)                   
+                   !print *,"FY(i,j-1,n) contribution is",FY(i,j-1,n)
+
+            !endif
+
 
 
                   GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &
@@ -1833,7 +1896,7 @@
 
                   !FZTOP_SUBM(i,j,n,bid) = fz
 
-               else  
+               else  !k == km
 
                   WORK1prev = SF_SUBM_X_UNIFIED(i  ,j  ,ieast ,kbt,k-1 ,bid)     &
                              * HYX_UNIFIED(i  ,j  ,bid) * TX_UNIFIED(i  ,j  ,k-1,n,bid)  &
@@ -2015,7 +2078,14 @@
       WORK3  = c0
       WORK4  = c0
 
-      if ( .not. implicit_vertical_mix )  print *, "Error in hmix_gm if ( .not. implicit_vertical_mix )" 
+     if ( .not. implicit_vertical_mix )  print *, "Error in hmix_gm if ( .not. implicit_vertical_mix )" 
+
+
+      CX = merge(HYX_UNIFIED(:,:,bid)*p25, c0, (k <= KMT_UNIFIED (:,:,bid))   &
+                                 .and. (k <= KMTE_UNIFIED(:,:,bid)))
+      CY = merge(HXY_UNIFIED(:,:,bid)*p25, c0, (k <= KMT_UNIFIED (:,:,bid))   &
+                                 .and. (k <= KMTN_UNIFIED(:,:,bid)))
+
 
      if ( k == 1 ) then
 
@@ -2542,6 +2612,26 @@
 
           do j=1,ny_block-1
             do i=1,nx_block
+
+
+             !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+
+                   !print *,"changed before"
+                   !print *,"FY(i,j,n) contribution is",FY(i,j,n)
+                   !print *,"CY(i,j,n) contribution is",CY(i,j)
+                   !print *,"WORK1 contribution is",WORK1(i,j)
+                   !print *,"WORK2 contribution is",WORK2(i,j)
+                   !print *,"WORK3 contribution is",WORK3(i,j)
+                   !print *,"WORK4 contribution is",WORK4(i,j)
+
+                   !print *,"TZ contribution is",TZ_UNIFIED(i,j,k,n,bid)
+                   !print *,"TZkp1 contribution is",TZ_UNIFIED(i,j,kp1,n,bid)
+                   !print *,"TZjp1 contribution is",TZ_UNIFIED(i,j+1,k,n,bid)
+                   !print *,"TZJp1kp1 contribution is",TZ_UNIFIED(i,j+1,kp1,n,bid)
+
+            !endif
+
+
               FY(i,j,n) = FY(i,j,n) - CY(i,j)                          &
                * ( WORK1(i,j) * TZ_UNIFIED(i,j,k,n,bid)                        &
                    + WORK2(i,j) * TZ_UNIFIED(i,j,kp1,n,bid)                    &
@@ -2707,11 +2797,22 @@
 
              endif ! k == 1 
 
-                fz = -KMASK(i,j) * p25 * WORK3(i,j)
+              fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
 
-                GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &               !done
-                             + FY(i,j,n) - FY(i,j-1,n)  &
+            !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+
+                   !print *,"changed"
+                   !print *,"FX(i,j,n)",FX(i,j,n)
+                   !print *,"FX(i-1,j,n)",FX(i-1,j,n)
+                   !print *,"FY(i,j,n)", FY(i,j,n)
+                   !print *,"FY(i,j-1,n)",FY(i,j-1,n)
+
+              !endif
+
+
+              GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &               !done
+                           + FY(i,j,n) - FY(i,j-1,n)  &
                       + fzprev - fz )*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)   
 
                enddo

@@ -2088,6 +2088,25 @@
 
           do j=1,ny_block-1
             do i=1,nx_block
+
+                 !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+
+                   !print *,"original before"
+                   !print *,"FY(i,j,n) contribution is",FY(i,j,n)
+                   !print *,"CY(i,j,n) contribution is",CY(i,j)
+                   !print *,"WORK1 contribution is",WORK1(i,j)
+                   !print *,"WORK2 contribution is",WORK2(i,j)
+                   !print *,"WORK3 contribution is",WORK3(i,j)
+                   !print *,"WORK4 contribution is",WORK4(i,j)
+                   
+                   !print *,"TZ contribution is",TZ(i,j,k,n,bid) 
+                   !print *,"TZkp1 contribution is",TZ(i,j,kp1,n,bid)
+                   !print *,"TZjp1 contribution is",TZ(i,j+1,k,n,bid)
+                   !print *,"TZJp1kp1 contribution is",TZ(i,j+1,kp1,n,bid)
+
+                  !endif
+
+
               FY(i,j,n) = FY(i,j,n) - CY(i,j)                          &
                * ( WORK1(i,j) * TZ(i,j,k,n,bid)                        &
                    + WORK2(i,j) * TZ(i,j,kp1,n,bid)                    &
@@ -2262,6 +2281,16 @@
 
 
                 fz = -KMASK(i,j) * p25 * WORK3(i,j)
+
+                 !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+
+                   !print *,"original" 
+                   !print *,"FX(i,j,n) contribution is",FX(i,j,n)
+                   !print *,"FY(i,j,n) contribution is",FY(i,j,n)
+                   !print *,"FX(i-1,j,n) contribution is",FX(i-1,j,n)
+                   !print *,"FY(i,j-1,n) contribution is",FX(i,j-1,n)
+
+                  !endif
 
 
                 GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &               !done

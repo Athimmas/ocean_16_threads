@@ -951,6 +951,18 @@
                                  .and. (k <= KMTE(:,:,bid)))
       CY = merge(HXY(:,:,bid)*p25, c0, (k <= KMT (:,:,bid))   &
                                  .and. (k <= KMTN(:,:,bid)))
+ 
+            i = 45
+            j = 45
+
+            if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 )then
+
+            print *,"original"
+            print *,"HYX(45,45,bid)",HYX(i,j,bid)
+            print *,"KMT(45,45,bid)",KMT(i,j,bid) 
+            print *,"CX(45,45,bid)",CX(i,j)
+
+            endif
       
       KMASK = merge(c1, c0, k < KMT(:,:,bid))
             
@@ -969,6 +981,24 @@
             do i=1,nx_block
 
               if(i <= nx_block-1 ) then
+
+
+            !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 - 1 .and. j == 45 .and. n == 1)then
+
+                   !print *,"original in flux"
+                   !print *,"SF_SUBM_X(i+1,j,iwest,kbt,k,bid) contribution is",SF_SUBM_X(i+1,j,iwest,kbt,k,bid)
+                   !print *,"SF_SUBM_X(i+1,j,iwest,ktp,k,bid) contribution is",SF_SUBM_X(i+1,j,iwest,ktp,k,bid)
+                   !print *,"SF_SUBM_X(i  ,j,ieast,kbt,k,bid) contribution is",SF_SUBM_X(i  ,j,ieast,kbt,k,bid)
+                   !print *,"SF_SUBM_X(i  ,j,ieast,ktp,k,bid)  contribution is",SF_SUBM_X(i  ,j,ieast,ktp,k,bid)
+                   !print *,"CX(i,j) contribution is",CX(i,j)
+                   !print *,"TZ(i,j,k,n,bid) is",TZ(i,j,k,n,bid)
+                   !print *,"TZ(i,j,kp1,n,bid) ",TZ(i,j,kp1,n,bid) 
+                   !print *,"TZ(i+1,j,k,n,bid)",TZ(i+1,j,k,n,bid)  
+                   !print *,"TZ(i+1,j,kp1,n,bid)",TZ(i,j,kp1,n,bid)
+
+            !endif
+
+
 
               FX(i,j,n) = CX(i,j)                          &
                * ( SF_SUBM_X(i  ,j,ieast,ktp,k,bid) * TZ(i,j,k,n,bid)                        &
@@ -1075,6 +1105,17 @@
 
                   fz = -KMASK(i,j) * p25    &
                       * (WORK1(i,j) + WORK2(i,j))
+
+
+            !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+
+                   !print *,"original in flux"
+                   !print *,"FX(i,j,n) contribution is",FX(i,j,n)
+                   !print *,"FX(i-1,j,n) contribution is",FX(i-1,j,n)
+                   !print *,"FY(i,j,n) contribution is",FY(i,j,n)
+                   !print *,"FY(i,j-1,n) contribution is",FY(i,j-1,n)
+
+            !endif
 
 
                   GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &
