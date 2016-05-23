@@ -104,6 +104,13 @@
 
    integer, save :: done = 1
 
+ real (r8), dimension(:,:,:,:,:),public,allocatable :: &
+      WORKN_PHI_TEMP
+
+  real (r8), dimension(:,:,:,:,:),public,allocatable :: &
+      WORKN_PHI_TEMP2
+
+
 !EOP
 !BOC
 !-----------------------------------------------------------------------
@@ -457,6 +464,9 @@
 
  allocate(TMIX_COMB(164,196,60,nt))
  allocate(SPLIT_ARRAY(44,52,60,nt,16))
+ allocate(WORKN_PHI_TEMP(nx_block,ny_block,nt,km,nblocks_clinic))
+ allocate(WORKN_PHI_TEMP2(nx_block,ny_block,nt,km,nblocks_clinic))
+
 
  end subroutine init_baroclinic
 
@@ -1797,9 +1807,6 @@
    real (r8), dimension(nx_block,ny_block) :: &
       WORKSW
 
-  real (r8), dimension(nx_block,ny_block,nt,km) :: &
-      WORKN_PHI_TEMP
-
   integer , save :: itsdone=0
 
   real (r8) start_time , end_time
@@ -1830,7 +1837,7 @@
 
    !start_time = omp_get_wtime()
    do kk=1,km
-   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk), TMIX, UMIX, VMIX, this_block)
+   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
    enddo
 
    !end_time = omp_get_wtime()
@@ -1860,7 +1867,7 @@
    !start_time = omp_get_wtime()
 
    do kk=1,km
-   call hdifft(kk, WORKN_PHI_TEMP(:,:,:,kk), TMIX, UMIX, VMIX, this_block)
+   call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
    enddo
 
    !end_time = omp_get_wtime()
@@ -1871,7 +1878,26 @@
 
    endif
 
-   WORKN = WORKN_PHI_TEMP(:,:,:,k)
+   WORKN = WORKN_PHI_TEMP2(:,:,:,k,bid)
+   !if (k == 1) then
+   !VDC = VDC_UNIFIED
+   !VDC_GM = VDC_GM_UNIFIED
+   !endif
+
+  if(my_task == master_task .and. k == 45 .and. nsteps_total == 3) then
+
+  if(all(WORKN_PHI_TEMP .eq. WORKN_PHI_TEMP2 )  ) then
+  
+   print *,"fine",WORKN_PHI_TEMP(45,45,1,45,bid),WORKN_PHI_TEMP2(45,45,1,45,bid), WORKN_PHI_TEMP(45,45,1,45,bid) - WORKN_PHI_TEMP2(45,45,1,45,bid)
+
+   else
+
+   print *,"error",WORKN_PHI_TEMP(45,45,1,45,bid),WORKN_PHI_TEMP2(45,45,1,45,bid), &
+           WORKN_PHI_TEMP(45,45,1,45,bid) - WORKN_PHI_TEMP2(45,45,1,45,bid)
+
+   endif
+
+  endif
 
    !if(my_task==master_task)then
 

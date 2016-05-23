@@ -585,8 +585,8 @@
 
    real (POP_r8), dimension(nx_block,ny_block) :: &
      WORK                 ! temporary to hold tavg field
-   real (POP_r8), dimension(nx_block,ny_block,nt,km) :: &
-      TDTK,HDTK_BUF       ! Hdiff(T) for nth tracer at level k from submeso_flux code
+   real (POP_r8), dimension(nx_block,ny_block,nt,km),save :: &
+      TDTK,HDTK_BUF      ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    real (POP_r8) :: &
       start_time,end_time ! Timers
@@ -634,8 +634,15 @@
                     
       endif
 
+        if(my_task == master_task .and. nsteps_total == 3 .and. k == 45)then
+
+           print *,"changed cont HDTK_BUF",HDTK_BUF(45,45,1,45)
+
+         endif
+
+
       !start_time = omp_get_wtime()  
-      !HDTK = HDTK_BUF(:,:,:,k)
+      HDTK = HDTK_BUF(:,:,:,k)
       !end_time = omp_get_wtime()
 
       !print *,"time at hdifft_gm is ",end_time - start_time
@@ -659,6 +666,16 @@
         endif
         HDTK=HDTK+TDTK(:,:,:,k)
    
+        if(my_task == master_task .and. nsteps_total == 3 .and. k == 45)then
+
+
+           print *,"changed contribution TDTK",TDTK(45,45,1,45)
+
+           print *,"total changed",HDTK(45,45,1)
+
+         endif
+
+
 
 !-----------------------------------------------------------------------
 !EOC
@@ -2688,16 +2705,14 @@
 
                  fzprev = -KMASKprev * p25 * WORK3prev
 
+             endif ! k == 1 
+
                 fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
 
                 GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &               !done
                              + FY(i,j,n) - FY(i,j-1,n)  &
-                      + fzprev - fz )*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)
-
-
-
-              endif ! k == 1   
+                      + fzprev - fz )*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)   
 
                enddo
             enddo 

@@ -37,6 +37,7 @@
    use tavg, only: define_tavg_field, accumulate_tavg_field, accumulate_tavg_now, &
       tavg_in_which_stream, ltavg_on
    use timers, only: timer_start, timer_stop, get_timer
+   use time_management, only: nsteps_total
    use exit_mod, only: sigAbort, exit_pop, flushm
    use mix_submeso, only: init_submeso, submeso_flux, submeso_sf
    use hmix_gm_submeso_share, only: init_meso_mixing, tracer_diffs_and_isopyc_slopes
@@ -528,7 +529,7 @@
 
    real (POP_r8), dimension(nx_block,ny_block) :: &
      WORK                 ! temporary to hold tavg field
-   real (POP_r8), dimension(nx_block,ny_block,nt,km) :: &
+   real (POP_r8), dimension(nx_block,ny_block,nt,km),save :: &
       TDTK,HDTK_BUF       ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    real (POP_r8) :: &
@@ -579,11 +580,17 @@
                                  tavg_HDIFN_TRACER,tavg_HDIFB_TRACER,this_block)
          enddo
 
+       endif
+
+       if(my_task == master_task .and. nsteps_total == 3 .and. k == 45)then
+
+           print *,"org HDTK cont",HDTK_BUF(45,45,1,45)
+
+         endif
+
          !end_time = omp_get_wtime()
 
          !print *,"time at hdifft_gm combined is ",end_time - start_time 
-                    
-      endif
 
       !start_time = omp_get_wtime()  
       HDTK = HDTK_BUF(:,:,:,k)
@@ -620,11 +627,29 @@
         !end_time = omp_get_wtime()
         !print *,"time at submeso_flux is ",end_time - start_time
         endif
+
         HDTK=HDTK+TDTK(:,:,:,k)
+
+         if(my_task == master_task .and. nsteps_total == 3 .and. k == 3)then
+
+           !print *,"org2",HDTK(3,3,1)
+
+         endif
+
+
+
    endif
    
+         if(my_task == master_task .and. nsteps_total == 3 .and. k == 45)then
+
+
+           print *,"org cont TDTK",TDTK(45,45,1,45)
+
+           print *,"total org",HDTK(45,45,1)
+
+         endif
   
-   
+ 
    
 !-----------------------------------------------------------------------
 !
