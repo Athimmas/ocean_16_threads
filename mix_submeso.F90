@@ -951,18 +951,15 @@
                                  .and. (k <= KMTE(:,:,bid)))
       CY = merge(HXY(:,:,bid)*p25, c0, (k <= KMT (:,:,bid))   &
                                  .and. (k <= KMTN(:,:,bid)))
- 
-            i = 45
-            j = 45
 
-            if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 )then
+      !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 )then
 
-            print *,"original"
-            print *,"HYX(45,45,bid)",HYX(i,j,bid)
-            print *,"KMT(45,45,bid)",KMT(i,j,bid) 
-            print *,"CX(45,45,bid)",CX(i,j)
+            !print *,"original"
+            !print *,"HYX(45,45,bid)",HYX(i,j,bid)
+            !print *,"KMT(45,45,bid)",KMT(i,j,bid) 
+            !print *,"CX(45,45,bid)",CX(i,j)
 
-            endif
+      !endif
       
       KMASK = merge(c1, c0, k < KMT(:,:,bid))
             

@@ -1975,6 +1975,19 @@
 
       do j=1,ny_block
         do i=1,nx_block-1
+
+        if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+
+
+             !print *,"Original"
+             !print *,"HOR_DIFF(i,j,ktp,k,bid)",HOR_DIFF(i,j,ktp,k,bid)
+             !print *,"HOR_DIFF(i,j,kbt,k,bid)",HOR_DIFF(i,j,kbt,k,bid)
+             !print *,"HOR_DIFF(i+1,j,ktp,k,bid)",HOR_DIFF(i+1,j,ktp,k,bid)
+             !print *,"HOR_DIFF(i,j,ktp,k,bid)",HOR_DIFF(i+1,j,kbt,k,bid)
+
+         endif
+
+
           WORK3(i,j) = KAPPA_ISOP(i,  j,ktp,k,bid)  &
                      + HOR_DIFF  (i,  j,ktp,k,bid)  &
                      + KAPPA_ISOP(i,  j,kbt,k,bid)  &
@@ -2017,8 +2030,6 @@
         factor    = c0
       endif
 
-
-
       do n = 1,nt
 
 !-----------------------------------------------------------------------
@@ -2031,6 +2042,21 @@
 
         FX(:,:,n) = dz(k) * CX * TX(:,:,k,n,bid) * WORK3
         FY(:,:,n) = dz(k) * CY * TY(:,:,k,n,bid) * WORK4 
+
+
+          !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+
+
+             !print *,"Original"
+             !print *,"FX(i,j,n)",FX(i,j,n)
+             !print *,"dz_unified",dz(k)
+             !print *,"CX",CX(i,j)
+             !print *,"TX_UNIFIED",TX(i,j,k,n,bid)
+             !print *,"WORK3",WORK3(i,j)
+             !print *,"WORK4",WORK4(i,j)
+
+             !endif
+
 
       end do
 
@@ -2056,6 +2082,26 @@
         do n = 1,nt
           do j=1,ny_block
             do i=1,nx_block-1
+
+
+             !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+
+
+             !print *,"original"
+             !print *,"FX(i,j,n)",FX(i,j,n)
+             !print *,"CX(i,j)",CX(i,j)
+             !print *,"WORK1(i,j)",WORK1(i,j)  
+             !print *,"WORK2(i,j)",WORK2(i,j)
+             !print *,"WORK3(i,j)",WORK3(i,j)
+             !print *,"WORK4(i,j)",WORK4(i,j)
+             !print *,"TZ(i,j)",TZ(i,j,k,n,bid)
+             !print *,"TZ(i,j,kp1)",TZ(i,j,kp1,n,bid)
+             !print *,"TZ(i+1,j)",TZ(i+1,j,k,n,bid)
+             !print *,"TZ(i+1,j,kp1)",TZ(i+1,j,kp1,n,bid) 
+             
+
+             !endif
+
               FX(i,j,n) = FX(i,j,n) - CX(i,j)                          &
                * ( WORK1(i,j) * TZ(i,j,k,n,bid)                        &
                    + WORK2(i,j) * TZ(i,j,kp1,n,bid)                    &
@@ -2282,7 +2328,7 @@
 
                 fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
-                 !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+                 !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
 
                    !print *,"original" 
                    !print *,"FX(i,j,n) contribution is",FX(i,j,n)
@@ -4521,12 +4567,30 @@
 !     interior region: no horizontal diffusion
 !
 !-----------------------------------------------------------------------
+                 !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. kk == ktp)then
+
+                 !print *,"original before",HOR_DIFF(i,j,kk,k,bid)
+
+                 !endif
 
                  if ( reference_depth(kk) > TLT%INTERIOR_DEPTH(i,j,bid)  &
                   .and.  k <= KMT(i,j,bid) ) then
 
                           HOR_DIFF(i,j,kk,k,bid) = c0
                  endif
+
+                 !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. kk == ktp)then
+
+
+                 !print *,"Original"
+                 !print *,"HOR_UNIFIED(i,j,ktp,k,bid)",HOR_DIFF(i,j,kk,k,bid)
+                 !print *,"reference_depth(kk)",reference_depth(kk)
+                 !print *,"TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)",TLT%INTERIOR_DEPTH(i,j,bid)
+                 !print *,"KMT_UNIFIED(i,j,bid)",KMT(i,j,bid)
+
+                 !endif
+
+
 
               enddo
            enddo

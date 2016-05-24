@@ -20,7 +20,7 @@
 
    use kinds_mod
    use blocks, only: nx_block, ny_block, block , nx_block_unified , &
-   nx_block_unified
+   ny_block_unified
    use distribution 
    use domain_size
    use domain, only: nblocks_clinic, distrb_clinic
@@ -55,12 +55,19 @@
 ! !PUBLIC MEMBER FUNCTIONS:
 
    public :: init_horizontal_mix_unified, &
-             hdifft_unified,tracer_diffs_and_isopyc_slopes_unified,smooth_hblt_unified,state_unified,submeso_flux_unified,transition_layer_unified,buoyancy_frequency_dependent_profile_unified,merged_streamfunction_unified,apply_vertical_profile_to_isop_hor_diff_unified
+             hdifft_unified,tracer_diffs_and_isopyc_slopes_unified,smooth_hblt_unified,state_unified, &
+             submeso_flux_unified,transition_layer_unified,buoyancy_frequency_dependent_profile_unified,&
+             merged_streamfunction_unified,apply_vertical_profile_to_isop_hor_diff_unified,submeso_sf_unified
 
 !EOP
 !BOC
 
 ! !PUBLIC VARIABLES
+
+!variables for horizontal_mix
+
+   real (POP_r8), dimension(nx_block,ny_block,nt,km) :: &
+      TDTK,HDTK_BUF      ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    !dir$ attributes offload:mic :: RX_UNIFIED
    !dir$ attributes offload:mic :: RY_UNIFIED
@@ -133,18 +140,18 @@
 
 !GRID related variables
 
-   !dir$ attributes offload : mic :: KMT_unified
+   !dir$ attributes offload : mic :: KMT_UNIFIED
    integer (POP_i4), dimension(nx_block,ny_block,max_blocks_clinic), &
       public :: &
-      KMT_unified
+      KMT_UNIFIED
 
-   !dir$ attributes offload : mic :: KMTN_unified
-   !dir$ attributes offload : mic :: KMTE_unified
+   !dir$ attributes offload : mic :: KMTN_UNIFIED
+   !dir$ attributes offload : mic :: KMTE_UNIFIED
    integer (POP_i4), dimension(nx_block,ny_block,max_blocks_clinic), &
       public :: &
-      KMTN_unified,KMTE_unified
+      KMTN_UNIFIED,KMTE_UNIFIED
 
-   !dir$ attributes offload:mic :: DZT_unified
+   !dir$ attributes offload:mic :: DZT_UNIFIED
    real (POP_r8), dimension(:,:,:,:), allocatable, public :: &
       DZT_unified
 
@@ -392,15 +399,15 @@
 
  use mix_submeso, only: TIME_SCALE,efficiency_factor,hor_length_scale, &
                         max_hor_grid_scale
- use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr,KMTE, KMT,&
+ use grid, only: KMT, dz, partial_bottom_cells, DZT, dzr, dzwr,KMTE,&
                    KMTN,zt,dzw,zw,DXT,DYT,HTN,HTE,TAREA_R,HUS,HUW
- use vmix_kpp, only:zgrid
+ use vmix_kpp, only:zgrid,KPP_HBLT,HMXL
  use prognostic
  use vertical_mix
  use omp_lib
  use hmix_gm
- use hmix_gm_submeso_share
- use vmix_kpp 
+ use hmix_gm_submeso_share, only: HXY,HYX
+  
 
    if( .not. allocated (HXY_UNIFIED)) then
 
@@ -448,12 +455,11 @@
    RX_UNIFIED       = c0
    RY_UNIFIED       = c0
    RZ_SAVE_UNIFIED  = c0
-   HMXL_unified = HMXL
+   HMXL_UNIFIED = HMXL
    KPP_HBLT_UNIFIED = KPP_HBLT
+   HOR_DIFF_UNIFIED = HOR_DIFF
 
-
-
-   print *,"HYX is",HYX_UNIFIED(45,45,1),HYX(45,45,1)
+   !if(my_task == master_task) print *,"HYX is",HYX_UNIFIED(45,45,1),HYX(45,45,1)
 
 !! initialization for state 
 
@@ -471,10 +477,10 @@
    endif
 
    pressz_unified = pressz
-   KMT_unified = KMT
-   KMTE_unified = KMTE
-   KMTN_unified = KMTN
-   DZT_unified = DZT
+   KMT_UNIFIED = KMT
+   KMTE_UNIFIED = KMTE
+   KMTN_UNIFIED = KMTN
+   DZT_UNIFIED = DZT
 
    dz_unified = dz
    dzr_unified = dzr
@@ -492,7 +498,7 @@
    HUS_UNIFIED = HUS
    HUW_UNIFIED = HUW
 
-   print *,"KMT is",KMT_UNIFIED(45,45,1),KMT(45,45,1)
+   !if(my_task == master_task) print *,"KMT is",KMT_UNIFIED(45,45,1),KMT(45,45,1)
 
 !! initialization for mix_submeso
 
@@ -547,7 +553,9 @@
 
   allocate (VDC_UNIFIED(nx_block,ny_block,0:km+1,2,nblocks_clinic))
 
-  allocate (VDC_GM_UNIFIED(nx_block,ny_block,km,nblocks_clinic)) 
+  allocate (VDC_GM_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
+  
+  allocate (RBR_UNIFIED (nx_block,ny_block,nblocks_clinic))
 
   endif
 
@@ -557,7 +565,8 @@
          KAPPA_VERTICAL_UNIFIED = KAPPA_VERTICAL
          HYXW_UNIFIED = HYXW
          HXYS_UNIFIED = HXYS 
- 
+         RB_UNIFIED = RB 
+         RBR_UNIFIED = RBR
 
 !-----------------------------------------------------------------------
 !EOC
@@ -613,8 +622,6 @@
 
    real (POP_r8), dimension(nx_block,ny_block) :: &
      WORK                 ! temporary to hold tavg field
-   real (POP_r8), dimension(nx_block,ny_block,nt,km),save :: &
-      TDTK,HDTK_BUF      ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    real (POP_r8) :: &
       start_time,end_time ! Timers
@@ -662,12 +669,11 @@
                     
       endif
 
-        if(my_task == master_task .and. nsteps_total == 3 .and. k == 45)then
+     if(nsteps_total == 1 .and. k == 1 .and. my_task == master_task) then
 
-           print *,"changed cont HDTK_BUF",HDTK_BUF(45,45,1,45)
+      print *,"changed cont HDTK is ",HDTK_BUF(3,5,1,1)
 
-         endif
-
+      endif
 
       !start_time = omp_get_wtime()  
       HDTK = HDTK_BUF(:,:,:,k)
@@ -682,6 +688,16 @@
          !print *,"time at submeso_sf is ",end_time - start_time
         endif
 
+
+        !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45)then
+
+           !print *,"KMT outside is",KMT_UNIFIED(45,45,bid)
+
+           !print *,"HYX(45,45,bid)",HYX_UNIFIED(45,45,bid)
+
+         !endif
+
+
         if(k==1) then
          !start_time = omp_get_wtime()
         !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(60) 
@@ -694,14 +710,11 @@
         endif
         HDTK=HDTK+TDTK(:,:,:,k)
    
-        if(my_task == master_task .and. nsteps_total == 3 .and. k == 45)then
+     if( nsteps_total == 1 .and. k == 1 .and. my_task == master_task) then
 
+      print *,"changed cont TDTK is ",TDTK(3,5,1,1)
 
-           print *,"changed contribution TDTK",TDTK(45,45,1,45)
-
-           print *,"total changed",HDTK(45,45,1)
-
-         endif
+      endif
 
 
 
@@ -1727,25 +1740,15 @@
 
       real (r8) :: WORK1prev,WORK2prev,KMASKprev,fzprev
 
+      bid = this_block%local_id
+
+
       CX = merge(HYX_UNIFIED(:,:,bid)*p25, c0, (k <= KMT_UNIFIED (:,:,bid))   &
                                  .and. (k <= KMTE_UNIFIED(:,:,bid)))
       CY = merge(HXY_UNIFIED(:,:,bid)*p25, c0, (k <= KMT_UNIFIED (:,:,bid))   &
                                  .and. (k <= KMTN_UNIFIED(:,:,bid)))
-
-            i = 45
-            j = 45
-             
-
-            if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 )then
-
-            print *,"changed"
-            print *,"HYX(45,45,bid)",HYX_UNIFIED(i,j,bid)
-            print *,"KMT(45,45,bid)",KMT_UNIFIED(i,j,bid)
-            print *,"CX(45,45,bid)",CX(i,j)
-
-            endif
-
       
+
       KMASK = merge(c1, c0, k < KMT_UNIFIED(:,:,bid))
             
       kp1 = k + 1
@@ -2097,7 +2100,6 @@
           WBOT_ISOP_UNIFIED(:,:,bid) = c0
         endif
 
-
         HOR_DIFF_UNIFIED(:,:,ktp,k,bid) = ah_bkg_srfbl
 
         BL_DEPTH_UNIFIED(:,:,bid) = zw_unified(k)
@@ -2416,6 +2418,8 @@
                    enddo !j Loop
              enddo  !i loop
 
+            enddo !kk_sub loop
+
            do j=1,ny_block
                    do i=1,nx_block
 
@@ -2427,9 +2431,6 @@
                    enddo
               enddo
 
-
-
-            enddo !k_sub loop
 
     enddo !kk loop
 
@@ -2506,8 +2507,24 @@
 
       endif
 
+     n = 1
+
      do j=1,ny_block
         do i=1,nx_block-1
+
+
+
+         if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+
+
+             !print *,"Changed"
+             !print *,"HOR_UNIFIED(i,  j,ktp,k,bid)",HOR_DIFF_UNIFIED(i,j,ktp,k,bid)
+             !print *,"HOR_UNIFIED(i,j,kbt,k,bid)",HOR_DIFF_UNIFIED(i,j,kbt,k,bid)
+             !print *,"HOR_UNIFIED(i+1,j,ktp,k,bid)",HOR_DIFF_UNIFIED(i+1,j,ktp,k,bid)
+             !print *,"HOR_UNIFIED(i,j,ktp,k,bid)",HOR_DIFF_UNIFIED(i+1,j,kbt,k,bid)
+
+         endif
+
           WORK3(i,j) = KAPPA_ISOP_UNIFIED(i,  j,ktp,k,bid)  &
                      + HOR_DIFF_UNIFIED  (i,  j,ktp,k,bid)  &
                      + KAPPA_ISOP_UNIFIED(i,  j,kbt,k,bid)  &
@@ -2544,6 +2561,7 @@
         factor    = c0
       endif
 
+
      do n = 1,nt
 
 !-----------------------------------------------------------------------
@@ -2556,6 +2574,20 @@
 
         FX(:,:,n) = dz_unified(k) * CX * TX_UNIFIED(:,:,k,n,bid) * WORK3
         FY(:,:,n) = dz_unified(k) * CY * TY_UNIFIED(:,:,k,n,bid) * WORK4
+
+           !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+
+
+             !print *,"Changed"
+             !print *,"FX(i,j,n)",FX(i,j,n)
+             !print *,"dz_unified",dz_unified(k)
+             !print *,"CX",CX(i,j) 
+             !print *,"TX_UNIFIED",TX_UNIFIED(i,j,k,n,bid)
+             !print *,"WORK3",WORK3(i,j)
+             !print *,"WORK4",WORK4(i,j)
+
+             !endif
+
 
       end do
 
@@ -2582,6 +2614,26 @@
         do n = 1,nt
           do j=1,ny_block
             do i=1,nx_block-1
+
+
+            !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+
+
+             !print *,"Changed"
+             !print *,"FX(i,j,n)",FX(i,j,n)
+             !print *,"CX(i,j)",CX(i,j)
+             !print *,"WORK1(i,j)",WORK1(i,j)
+             !print *,"WORK2(i,j)",WORK2(i,j)
+             !print *,"WORK3(i,j)",WORK3(i,j)
+             !print *,"WORK4(i,j)",WORK4(i,j)
+             !print *,"TZ(i,j)",TZ_UNIFIED(i,j,k,n,bid)
+             !print *,"TZ(i,j,kp1)",TZ_UNIFIED(i,j,kp1,n,bid)
+             !print *,"TZ(i+1,j)",TZ_UNIFIED(i+1,j,k,n,bid)
+             !print *,"TZ(i+1,j,kp1)",TZ_UNIFIED(i+1,j,kp1,n,bid)
+
+
+             !endif
+
               FX(i,j,n) = FX(i,j,n) - CX(i,j)                          &
                * ( WORK1(i,j) * TZ_UNIFIED(i,j,k,n,bid)                        &
                    + WORK2(i,j) * TZ_UNIFIED(i,j,kp1,n,bid)                    &
@@ -2800,9 +2852,9 @@
               fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
 
-            !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+            !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
 
-                   !print *,"changed"
+                   !print *,"changed 1 at GTK write is"
                    !print *,"FX(i,j,n)",FX(i,j,n)
                    !print *,"FX(i-1,j,n)",FX(i-1,j,n)
                    !print *,"FY(i,j,n)", FY(i,j,n)
@@ -2967,6 +3019,7 @@
 !     consistency checks 
 !
 !-----------------------------------------------------------------------
+
 
    if ( overwrite_hblt  .and.  ( .not.present(KBL)  .or.        &
                                  .not.present(HBLT) ) ) then      
@@ -3246,6 +3299,129 @@
                    enddo
              enddo
              enddo
+
+      do k=2,km
+
+        reference_depth(ktp) = zt_unified(k)
+        reference_depth(kbt) = zw_unified(k)
+
+        do kk=ktp,kbt
+
+              !!$OMP PARALLEL DO
+              !DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)SCHEDULE(DYNAMIC,16)
+              do j=1,ny_block
+                   do i=1,nx_block
+                      if (kk == ktp) then
+                   
+                         WORK(i,j) = c0 
+                         if ( COMPUTE_TLT(i,j)  .and.  K_START(i,j) <= KMT_UNIFIED(i,j,bid)  .and. &
+                                                                   K_START(i,j) == k ) then
+                         WORK(i,j) = max(SLA_SAVE_UNIFIED(i,j,ktp,k,bid), &
+                         SLA_SAVE_UNIFIED(i,j,kbt,k,bid)) * RB_UNIFIED(i,j,bid)
+                         endif
+
+
+                      else
+ 
+                         if ( COMPUTE_TLT(i,j)  .and.  K_START(i,j) < KMT_UNIFIED(i,j,bid)  .and. &
+                            K_START(i,j) == k .and. k .lt. km) then
+                            WORK(i,j) = max(SLA_SAVE_UNIFIED(i,j,kbt,k,bid), &
+                            SLA_SAVE_UNIFIED(i,j,ktp,k+1,bid)) * RB_UNIFIED(i,j,bid)
+                         endif
+
+
+                         if ( COMPUTE_TLT(i,j)  .and.  K_START(i,j) == KMT_UNIFIED(i,j,bid)  .and. &
+                               K_START(i,j) == k ) then
+                               WORK(i,j) = SLA_SAVE_UNIFIED(i,j,kbt,k,bid) * RB_UNIFIED(i,j,bid)
+                         endif
+
+                      endif  
+
+                      if ( WORK(i,j) /= c0  .and.  &
+                               TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid) < (reference_depth(kk) - WORK(i,j)) )then 
+                               COMPUTE_TLT(i,j) = .false.
+                      endif
+ 
+                      if ( WORK(i,j) /= c0  .and.  &
+                        TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid) >= (reference_depth(kk) - WORK(i,j)) ) then
+
+                                TLT_UNIFIED%THICKNESS(i,j,bid) = reference_depth(kk)  &
+                                    - TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)
+                                TLT_UNIFIED%K_LEVEL(i,j,bid)   = k
+                                TLT_UNIFIED%ZTW(i,j,bid)       = kk
+
+                       endif
+
+                   enddo
+              enddo
+          enddo
+
+             do j=1,ny_block
+                   do i=1,nx_block
+
+                       if ( COMPUTE_TLT(i,j)  .and.  K_START(i,j) == k ) then
+                           K_START(i,j) = K_START(i,j) + 1
+                       endif
+                   enddo
+              enddo  
+
+      enddo
+
+#ifdef CCSMCOUPLED
+#ifndef _HIRES
+      if ( any(COMPUTE_TLT) ) then
+        print *,'Incorrect TLT computations'
+      endif
+#endif
+#endif 
+
+     do k=1,km
+
+             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+             do j=1,ny_block
+                   do i=1,nx_block
+
+
+                      if ( TLT_UNIFIED%K_LEVEL(i,j,bid) == k  .and.  &
+                         TLT_UNIFIED%ZTW(i,j,bid) == 1 ) then
+
+                            TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid) = zt_unified(k)
+                      endif
+
+
+                      if ( TLT_UNIFIED%K_LEVEL(i,j,bid) == k  .and.  &
+                         TLT_UNIFIED%ZTW(i,j,bid) == 2 ) then
+
+                            TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid) = zw_unified(k)
+                      endif
+
+                   enddo
+              enddo
+      enddo
+
+             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+             do j=1,ny_block
+                   do i=1,nx_block
+
+
+                      COMPUTE_TLT(i,j) = .false.
+
+                      if ( KMT_UNIFIED(i,j,bid) /= 0  .and.  &
+                           TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid) == c0 ) then 
+                           
+                           COMPUTE_TLT(i,j) = .true.
+
+                      endif    
+
+                      if ( KMT_UNIFIED(i,j,bid) == 0  .and.  &
+                            TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid) /= c0 )  then
+
+                            COMPUTE_TLT(i,j) = .true.
+
+                      endif  
+
+                   enddo
+              enddo
 
 
  end subroutine transition_layer_unified
@@ -3836,12 +4012,30 @@
 !     interior region: no horizontal diffusion
 !
 !-----------------------------------------------------------------------
+                 !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. kk == ktp)then
+
+                 !print *,"Changed before",HOR_DIFF_UNIFIED(i,j,kk,k,bid) 
+
+                 !endif
+
 
                  if ( reference_depth(kk) > TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)  &
                   .and.  k <= KMT_UNIFIED(i,j,bid) ) then
 
                           HOR_DIFF_UNIFIED(i,j,kk,k,bid) = c0
                  endif
+
+                 !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. kk == ktp)then
+
+
+                 !print *,"Changed"
+                 !print *,"HOR_UNIFIED(i,j,ktp,k,bid)",HOR_DIFF_UNIFIED(i,j,kk,k,bid)
+                 !print *,"reference_depth(kk)",reference_depth(kk)
+                 !print *,"TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)",TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)   
+                 !print *,"KMT_UNIFIED(i,j,bid)",KMT_UNIFIED(i,j,bid)                 
+
+                 !endif
+
 
               enddo
            enddo

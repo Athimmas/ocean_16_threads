@@ -462,8 +462,8 @@
 
  call flushm (stdout)
 
- allocate(TMIX_COMB(164,196,60,nt))
- allocate(SPLIT_ARRAY(44,52,60,nt,16))
+ !allocate(TMIX_COMB(164,196,60,nt))
+ !allocate(SPLIT_ARRAY(44,52,60,nt,16))
  allocate(WORKN_PHI_TEMP(nx_block,ny_block,nt,km,nblocks_clinic))
  allocate(WORKN_PHI_TEMP2(nx_block,ny_block,nt,km,nblocks_clinic))
 
@@ -1799,7 +1799,7 @@
 
    integer (int_kind) :: &
       n,kk,              &! dummy tracer index
-      bid                 ! local_block id
+      bid,i,j             ! local_block id
 
    real (r8), dimension(nx_block,ny_block,nt) :: &
       FT,                &! sum of terms in dT/dt for the nth tracer
@@ -1882,18 +1882,33 @@
    !VDC_GM = VDC_GM_UNIFIED
    !endif
 
-  if(my_task == master_task .and. k == 45 .and. nsteps_total == 3) then
+  if(my_task == master_task ) then
 
-  if(all(WORKN_PHI_TEMP .eq. WORKN_PHI_TEMP2 )  ) then
+   !do n=1,nt
+   !do kk=1,km
+     !do j=1,ny_block
+      !do i=1,nx_block
+
+        !if( WORKN_PHI_TEMP2(i,j,kk,n,bid) .ne. WORKN_PHI_TEMP(i,j,kk,n,bid)) then 
+           !print *,i,j,kk,n,WORKN_PHI_TEMP2(i,j,kk,n,bid),WORKN_PHI_TEMP(i,j,kk,n,bid),nsteps_total
+           !exit
+        !endif
+
+      !enddo
+     !enddo
+    !enddo
+   !enddo 
+
+  !if( all(WORKN_PHI_TEMP .eq. WORKN_PHI_TEMP2 )  ) then
+   
+   if(WORKN_PHI_TEMP(3,5,1,1,bid) .eq. WORKN_PHI_TEMP2(3,5,1,1,bid) ) then
   
-   print *,"fine",WORKN_PHI_TEMP(45,45,1,45,bid),WORKN_PHI_TEMP2(45,45,1,45,bid), WORKN_PHI_TEMP(45,45,1,45,bid) - WORKN_PHI_TEMP2(45,45,1,45,bid)
+   print *,"fine",WORKN_PHI_TEMP(3,5,1,1,bid),WORKN_PHI_TEMP2(3,5,1,1,bid), WORKN_PHI_TEMP(3,5,1,1,bid) - WORKN_PHI_TEMP2(3,5,1,1,bid)
+   
+  else
 
-   else
-
-   print *,"error",WORKN_PHI_TEMP(45,45,1,45,bid),WORKN_PHI_TEMP2(45,45,1,45,bid), &
-           WORKN_PHI_TEMP(45,45,1,45,bid) - WORKN_PHI_TEMP2(45,45,1,45,bid)
-
-   endif
+   print *,"error",WORKN_PHI_TEMP(3,5,1,1,bid),WORKN_PHI_TEMP2(3,5,1,1,bid), &
+           WORKN_PHI_TEMP(3,5,1,1,bid) - WORKN_PHI_TEMP2(3,5,1,1,bid)
 
   endif
 
@@ -1903,7 +1918,7 @@
    !   write(10),WORKN
    !   close(10)
 
-   !endif
+   endif
 
    FT = FT + WORKN
 
