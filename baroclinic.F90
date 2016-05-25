@@ -1831,7 +1831,9 @@
 
    if(k==1)then
 
-    call init_horizontal_mix_unified 
+   HMXL_UNIFIED = HMXL
+   KPP_HBLT_UNIFIED = KPP_HBLT
+
 
    !start_time = omp_get_wtime()
    do kk=1,km
@@ -1882,7 +1884,7 @@
    !VDC_GM = VDC_GM_UNIFIED
    !endif
 
-  if(my_task == master_task ) then
+  !if(my_task == master_task .and. k == 1) then
 
    !do n=1,nt
    !do kk=1,km
@@ -1899,18 +1901,18 @@
     !enddo
    !enddo 
 
-  !if( all(WORKN_PHI_TEMP .eq. WORKN_PHI_TEMP2 )  ) then
+  !if( all(WORKN_PHI_TEMP .eq. WORKN_PHI_TEMP2  )  ) then
    
-   if(WORKN_PHI_TEMP(3,5,1,1,bid) .eq. WORKN_PHI_TEMP2(3,5,1,1,bid) ) then
+   !if(WORKN_PHI_TEMP(4,6,1,1,bid) .eq. WORKN_PHI_TEMP2(4,6,1,1,bid) .and. nsteps_total == 1 ) then
   
-   print *,"fine",WORKN_PHI_TEMP(3,5,1,1,bid),WORKN_PHI_TEMP2(3,5,1,1,bid), WORKN_PHI_TEMP(3,5,1,1,bid) - WORKN_PHI_TEMP2(3,5,1,1,bid)
+   !print *,"fine",WORKN_PHI_TEMP(4,6,1,1,bid),WORKN_PHI_TEMP2(4,6,1,1,bid), WORKN_PHI_TEMP(4,6,1,1,bid) - WORKN_PHI_TEMP2(4,6,1,1,bid)
    
-  else
+  !else
 
-   print *,"error",WORKN_PHI_TEMP(3,5,1,1,bid),WORKN_PHI_TEMP2(3,5,1,1,bid), &
-           WORKN_PHI_TEMP(3,5,1,1,bid) - WORKN_PHI_TEMP2(3,5,1,1,bid)
+   !print *,"error",WORKN_PHI_TEMP(4,6,1,1,bid),WORKN_PHI_TEMP2(4,6,1,1,bid), &
+   !        WORKN_PHI_TEMP(4,6,1,1,bid) - WORKN_PHI_TEMP2(4,6,1,1,bid)
 
-  endif
+  !endif
 
    !if(my_task==master_task)then
 
@@ -1918,7 +1920,7 @@
    !   write(10),WORKN
    !   close(10)
 
-   endif
+   !endif
 
    FT = FT + WORKN
 

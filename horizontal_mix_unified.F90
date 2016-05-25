@@ -669,11 +669,11 @@
                     
       endif
 
-     if(nsteps_total == 1 .and. k == 1 .and. my_task == master_task) then
+     !if(nsteps_total == 1 .and. k == 1 .and. my_task == master_task) then
 
-      print *,"changed cont HDTK is ",HDTK_BUF(3,5,1,1)
+      !print *,"changed cont HDTK is ",HDTK_BUF(4,6,1,1)
 
-      endif
+      !endif
 
       !start_time = omp_get_wtime()  
       HDTK = HDTK_BUF(:,:,:,k)
@@ -710,11 +710,11 @@
         endif
         HDTK=HDTK+TDTK(:,:,:,k)
    
-     if( nsteps_total == 1 .and. k == 1 .and. my_task == master_task) then
+     !if( nsteps_total == 1 .and. k == 1 .and. my_task == master_task) then
 
-      print *,"changed cont TDTK is ",TDTK(3,5,1,1)
+      !print *,"changed cont TDTK is ",TDTK(4,6,1,1)
 
-      endif
+      !endif
 
 
 
@@ -2514,7 +2514,7 @@
 
 
 
-         if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+         !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
 
 
              !print *,"Changed"
@@ -2523,7 +2523,7 @@
              !print *,"HOR_UNIFIED(i+1,j,ktp,k,bid)",HOR_DIFF_UNIFIED(i+1,j,ktp,k,bid)
              !print *,"HOR_UNIFIED(i,j,ktp,k,bid)",HOR_DIFF_UNIFIED(i+1,j,kbt,k,bid)
 
-         endif
+         !endif
 
           WORK3(i,j) = KAPPA_ISOP_UNIFIED(i,  j,ktp,k,bid)  &
                      + HOR_DIFF_UNIFIED  (i,  j,ktp,k,bid)  &
@@ -2666,7 +2666,7 @@
             do i=1,nx_block
 
 
-             !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+             !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 4 .and. j == 6 - 1 .and. n == 1)then
 
                    !print *,"changed before"
                    !print *,"FY(i,j,n) contribution is",FY(i,j,n)
@@ -2852,7 +2852,7 @@
               fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
 
-            !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+            !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 4 .and. j == 6 .and. n == 1)then
 
                    !print *,"changed 1 at GTK write is"
                    !print *,"FX(i,j,n)",FX(i,j,n)

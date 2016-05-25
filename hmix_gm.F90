@@ -1976,7 +1976,7 @@
       do j=1,ny_block
         do i=1,nx_block-1
 
-        if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+        !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
 
 
              !print *,"Original"
@@ -1985,7 +1985,7 @@
              !print *,"HOR_DIFF(i+1,j,ktp,k,bid)",HOR_DIFF(i+1,j,ktp,k,bid)
              !print *,"HOR_DIFF(i,j,ktp,k,bid)",HOR_DIFF(i+1,j,kbt,k,bid)
 
-         endif
+         !endif
 
 
           WORK3(i,j) = KAPPA_ISOP(i,  j,ktp,k,bid)  &
@@ -2135,7 +2135,7 @@
           do j=1,ny_block-1
             do i=1,nx_block
 
-                 !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 .and. j == 45 .and. n == 1)then
+                 !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 4 .and. j == 6 - 1 .and. n == 1)then
 
                    !print *,"original before"
                    !print *,"FY(i,j,n) contribution is",FY(i,j,n)
@@ -2328,7 +2328,7 @@
 
                 fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
-                 !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+                 !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 4 .and. j == 6 .and. n == 1)then
 
                    !print *,"original" 
                    !print *,"FX(i,j,n) contribution is",FX(i,j,n)

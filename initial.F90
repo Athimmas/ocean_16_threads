@@ -493,6 +493,8 @@
 
    call init_horizontal_mix(errorCode)
 
+   call init_horizontal_mix_unified
+
    if (errorCode /= POP_Success) then
       call POP_ErrorSet(errorCode, &
          'init_phase1: error in init_horizontal_mix')
