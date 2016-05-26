@@ -1806,7 +1806,11 @@
 
    real (r8), dimension(nx_block,ny_block,nt) :: &
       FT,                &! sum of terms in dT/dt for the nth tracer
-      WORKN               ! work array used for various dT/dt terms 
+      WORKN               ! work array used for various dT/dt terms
+
+   real (r8), dimension(nx_block,ny_block,nt,km) :: &
+      WORKN_PHI_TEMP1               ! work array used for various dT/dt terms
+ 
 
    real (r8), dimension(nx_block,ny_block) :: &
       WORKSW
@@ -1832,10 +1836,13 @@
 !-----------------------------------------------------------------------
    
 
+   !$omp barrier
    if(k==1)then
 
    HMXL_UNIFIED = HMXL
    KPP_HBLT_UNIFIED = KPP_HBLT
+   VDC_UNIFIED = VDC
+   VDC_GM_UNIFIED = VDC_GM 
    !$omp barrier
 
    !start_time = omp_get_wtime()
@@ -1869,9 +1876,9 @@
 
    !start_time = omp_get_wtime()
 
-   do kk=1,km
-   call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
-   enddo
+   !do kk=1,km
+   !call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
+   !enddo
 
    !end_time = omp_get_wtime()
 
@@ -1881,30 +1888,35 @@
 
    endif
 
+
    WORKN = WORKN_PHI_TEMP(:,:,:,k,bid)
+
+   !$omp barrier
    if (k == 1) then
    VDC = VDC_UNIFIED
    VDC_GM = VDC_GM_UNIFIED
-   !$omp barrier
    endif
 
-  if(my_task == master_task .and. k == 1  ) then
+   !$omp barrier
+  !if(my_task == master_task .and. k == 1  ) then
 
-   do n=1,nt
-   do kk=1,km
-    do j=1,ny_block
-     do i=1,nx_block
+   !print *,WORKN_PHI_TEMP(3,7,1,1,bid)
 
-        if( abs(WORKN_PHI_TEMP2(i,j,kk,n,bid) - WORKN_PHI_TEMP(i,j,kk,n,bid)) .gt. 1e-19 ) then 
-           print *,i,j,kk,n,WORKN_PHI_TEMP2(i,j,kk,n,bid),WORKN_PHI_TEMP(i,j,kk,n,bid),nsteps_total
-           print *,"error is ",WORKN_PHI_TEMP2(i,j,kk,n,bid) - WORKN_PHI_TEMP(i,j,kk,n,bid)
-           exit
-        endif
+   !do n=1,nt
+   !do kk=1,km
+    !do j=1,ny_block
+     !do i=1,nx_block
 
-      enddo
-     enddo
-    enddo
-   enddo 
+        !if( abs(WORKN_PHI_TEMP2(i,j,kk,n,bid) - WORKN_PHI_TEMP(i,j,kk,n,bid)) .gt. 1e-19 ) then 
+           !print *,i,j,kk,n,WORKN_PHI_TEMP2(i,j,kk,n,bid),WORKN_PHI_TEMP(i,j,kk,n,bid),nsteps_total
+           !print *,"error is ",WORKN_PHI_TEMP2(i,j,kk,n,bid) - WORKN_PHI_TEMP(i,j,kk,n,bid)
+           !exit
+        !endif
+
+      !enddo
+     !enddo
+    !enddo
+   !enddo 
 
   !if( all(WORKN_PHI_TEMP .eq. WORKN_PHI_TEMP2  )  ) then
    
@@ -1918,7 +1930,7 @@
    !        WORKN_PHI_TEMP(3,7,1,1,bid) - WORKN_PHI_TEMP2(3,7,1,1,bid),nsteps_total
 
 
-  endif
+  !endif
 
    !if(my_task==master_task)then
 

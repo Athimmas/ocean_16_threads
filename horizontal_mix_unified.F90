@@ -66,7 +66,7 @@
 
 !variables for horizontal_mix
 
-   real (POP_r8), dimension(nx_block,ny_block,nt,km) :: &
+   real (POP_r8), dimension(nx_block,ny_block,nt,km,max_blocks_clinic) :: &
       TDTK,HDTK_BUF      ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    !dir$ attributes offload:mic :: RX_UNIFIED
@@ -654,12 +654,12 @@
       if (k == 1) then
          !start_time = omp_get_wtime()
 
-         call hdifft_gm_unified(1, HDTK_BUF(:,:,:,1), TMIX, UMIX, VMIX, tavg_HDIFE_TRACER, &
+         call hdifft_gm_unified(1, HDTK_BUF(:,:,:,1,bid), TMIX, UMIX, VMIX, tavg_HDIFE_TRACER, &
                          tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
 
          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(59) 
          do kk=2,km
-         call hdifft_gm_unified(kk , HDTK_BUF(:,:,:,kk) , TMIX, UMIX,VMIX,tavg_HDIFE_TRACER, &
+         call hdifft_gm_unified(kk , HDTK_BUF(:,:,:,kk,bid) , TMIX, UMIX,VMIX,tavg_HDIFE_TRACER, &
                                  tavg_HDIFN_TRACER,tavg_HDIFB_TRACER,this_block)
          enddo
 
@@ -676,7 +676,7 @@
       !endif
 
       !start_time = omp_get_wtime()  
-      HDTK = HDTK_BUF(:,:,:,k)
+      HDTK = HDTK_BUF(:,:,:,k,bid)
       !end_time = omp_get_wtime()
 
       !print *,"time at hdifft_gm is ",end_time - start_time
@@ -702,13 +702,13 @@
          !start_time = omp_get_wtime()
         !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)num_threads(60) 
         do kk=1,km
-         call submeso_flux_unified(kk, TDTK(:,:,:,kk), TMIX, tavg_HDIFE_TRACER, &
+         call submeso_flux_unified(kk, TDTK(:,:,:,kk,bid), TMIX, tavg_HDIFE_TRACER, &
                               tavg_HDIFN_TRACER, tavg_HDIFB_TRACER, this_block)
         enddo
         !end_time = omp_get_wtime()
         !print *,"time at submeso_flux is ",end_time - start_time
         endif
-        HDTK=HDTK+TDTK(:,:,:,k)
+        HDTK=HDTK+TDTK(:,:,:,k,bid)
    
      !if( nsteps_total == 6 .and. k == 1 .and. my_task == master_task) then
 
