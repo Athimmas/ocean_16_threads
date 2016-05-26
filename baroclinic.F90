@@ -21,7 +21,8 @@
    use POP_HaloMod 
 
    use kinds_mod, only: int_kind, r8, log_kind, r4, rtavg
-   use blocks, only: nx_block, ny_block, block, get_block
+   use blocks, only: nx_block, ny_block, block, get_block, &
+                     nx_block_unified,ny_block_unified
 !   use distribution, only: 
    use domain_size
    use domain, only: nblocks_clinic, blocks_clinic, POP_haloClinic
@@ -462,11 +463,13 @@
 
  call flushm (stdout)
 
- !allocate(TMIX_COMB(164,196,60,nt))
- !allocate(SPLIT_ARRAY(44,52,60,nt,16))
+ allocate(TMIX_COMB(nx_block_unified,ny_block_unified,km,nt))
+ allocate(SPLIT_ARRAY(nx_block,ny_block,km,nt,16))
  allocate(WORKN_PHI_TEMP(nx_block,ny_block,nt,km,nblocks_clinic))
  allocate(WORKN_PHI_TEMP2(nx_block,ny_block,nt,km,nblocks_clinic))
 
+ print *,nx_block_unified,ny_block_unified
+ print *,nx_block,ny_block  
 
  end subroutine init_baroclinic
 
@@ -1833,7 +1836,7 @@
 
    HMXL_UNIFIED = HMXL
    KPP_HBLT_UNIFIED = KPP_HBLT
-
+   !$omp barrier
 
    !start_time = omp_get_wtime()
    do kk=1,km
@@ -1878,41 +1881,44 @@
 
    endif
 
-   WORKN = WORKN_PHI_TEMP2(:,:,:,k,bid)
-   !if (k == 1) then
-   !VDC = VDC_UNIFIED
-   !VDC_GM = VDC_GM_UNIFIED
-   !endif
+   WORKN = WORKN_PHI_TEMP(:,:,:,k,bid)
+   if (k == 1) then
+   VDC = VDC_UNIFIED
+   VDC_GM = VDC_GM_UNIFIED
+   !$omp barrier
+   endif
 
-  !if(my_task == master_task .and. k == 1) then
+  if(my_task == master_task .and. k == 1  ) then
 
-   !do n=1,nt
-   !do kk=1,km
-     !do j=1,ny_block
-      !do i=1,nx_block
+   do n=1,nt
+   do kk=1,km
+    do j=1,ny_block
+     do i=1,nx_block
 
-        !if( WORKN_PHI_TEMP2(i,j,kk,n,bid) .ne. WORKN_PHI_TEMP(i,j,kk,n,bid)) then 
-           !print *,i,j,kk,n,WORKN_PHI_TEMP2(i,j,kk,n,bid),WORKN_PHI_TEMP(i,j,kk,n,bid),nsteps_total
-           !exit
-        !endif
+        if( abs(WORKN_PHI_TEMP2(i,j,kk,n,bid) - WORKN_PHI_TEMP(i,j,kk,n,bid)) .gt. 1e-19 ) then 
+           print *,i,j,kk,n,WORKN_PHI_TEMP2(i,j,kk,n,bid),WORKN_PHI_TEMP(i,j,kk,n,bid),nsteps_total
+           print *,"error is ",WORKN_PHI_TEMP2(i,j,kk,n,bid) - WORKN_PHI_TEMP(i,j,kk,n,bid)
+           exit
+        endif
 
-      !enddo
-     !enddo
-    !enddo
-   !enddo 
+      enddo
+     enddo
+    enddo
+   enddo 
 
   !if( all(WORKN_PHI_TEMP .eq. WORKN_PHI_TEMP2  )  ) then
    
-   !if(WORKN_PHI_TEMP(4,6,1,1,bid) .eq. WORKN_PHI_TEMP2(4,6,1,1,bid) .and. nsteps_total == 1 ) then
+   !if(WORKN_PHI_TEMP(3,7,1,1,bid) .eq. WORKN_PHI_TEMP2(3,7,1,1,bid)) then
   
-   !print *,"fine",WORKN_PHI_TEMP(4,6,1,1,bid),WORKN_PHI_TEMP2(4,6,1,1,bid), WORKN_PHI_TEMP(4,6,1,1,bid) - WORKN_PHI_TEMP2(4,6,1,1,bid)
+   !print *,"fine",WORKN_PHI_TEMP(3,7,1,1,bid),WORKN_PHI_TEMP2(3,7,1,1,bid), WORKN_PHI_TEMP(3,7,1,1,bid) - WORKN_PHI_TEMP2(3,7,1,1,bid)
    
   !else
 
-   !print *,"error",WORKN_PHI_TEMP(4,6,1,1,bid),WORKN_PHI_TEMP2(4,6,1,1,bid), &
-   !        WORKN_PHI_TEMP(4,6,1,1,bid) - WORKN_PHI_TEMP2(4,6,1,1,bid)
+   !print *,"error",WORKN_PHI_TEMP(3,7,1,1,bid),WORKN_PHI_TEMP2(3,7,1,1,bid), &
+   !        WORKN_PHI_TEMP(3,7,1,1,bid) - WORKN_PHI_TEMP2(3,7,1,1,bid),nsteps_total
 
-  !endif
+
+  endif
 
    !if(my_task==master_task)then
 

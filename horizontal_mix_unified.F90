@@ -669,9 +669,9 @@
                     
       endif
 
-     !if(nsteps_total == 1 .and. k == 1 .and. my_task == master_task) then
+     !if(nsteps_total == 6 .and. k == 1 .and. my_task == master_task) then
 
-      !print *,"changed cont HDTK is ",HDTK_BUF(4,6,1,1)
+      !print *,"changed cont HDTK is ",HDTK_BUF(3,7,1,1)
 
       !endif
 
@@ -710,9 +710,9 @@
         endif
         HDTK=HDTK+TDTK(:,:,:,k)
    
-     !if( nsteps_total == 1 .and. k == 1 .and. my_task == master_task) then
+     !if( nsteps_total == 6 .and. k == 1 .and. my_task == master_task) then
 
-      !print *,"changed cont TDTK is ",TDTK(4,6,1,1)
+      !print *,"changed cont TDTK is ",TDTK(3,7,1,1)
 
       !endif
 
@@ -2146,7 +2146,16 @@
           !!$OMP END PARALLEL DO
           call transition_layer_unified ( this_block ) 
  
-        endif        
+        endif
+
+      !if(my_task == master_task)then
+
+
+         !print *,"Changed before"
+         !print*,"KAPPA_THIC_UNIFIED(i,j,ktp,k,bid)",KAPPA_THIC_UNIFIED(3,7,ktp,4,bid),nsteps_total
+
+      !endif
+        
 
      if ( ( kappa_isop_type == kappa_type_vmhs           .or.    &
             kappa_thic_type == kappa_type_vmhs           .or.    &
@@ -2210,6 +2219,17 @@
              enddo
             enddo
           enddo
+
+
+      !if(my_task == master_task)then
+
+
+         !print *,"Changed after"
+         !print*,"KAPPA_THIC_UNIFIED(i,j,ktp,k,bid)",KAPPA_THIC_UNIFIED(3,7,ktp,4,bid),nsteps_total
+         !print *,"-----------------------------------"
+
+      !endif
+
 
     do kk=1,km
 
@@ -2408,6 +2428,17 @@
 
                        endif
 
+      !if(my_task == master_task .and. nsteps_total == 6 .and. kk == 2+2 .and. i==3 .and. j==7 .and. kk_sub == ktp)then
+
+
+         !print *,"Original"
+         !print *,"KAPPA_THIC_UNIFIED(i,j,ktp,k,bid)",KAPPA_THIC_UNIFIED(i,j,kk_sub,kk,bid)
+         !print *,"TAPER1(i,j)",TAPER1(i,j)
+         !print *,"TAPER3(i,j)",TAPER3(i,j)
+
+      !endif
+
+
                       KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid) =  &
                       TAPER1(i,j) * TAPER2(i,j) * KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid)
 
@@ -2596,6 +2627,21 @@
 
         do j=1,ny_block
           do i=1,nx_block-1
+
+           !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 )then
+
+
+             !print *,"Changed"
+             !print *,"dz_unified(k)",dz_unified(k)
+             !print *,"KAPPA_ISOP_UNIFIED(i,j,ktp,k,bid)",KAPPA_ISOP_UNIFIED(i,j,ktp,k,bid)
+             !print *,"SLX_UNIFIED(i,j,ieast,ktp,k,bid)",SLX_UNIFIED(i,j,ieast,ktp,k,bid)             
+             !print *,"KAPPA_ISOP_UNIFIED(i,j,kbt,k,bid)",KAPPA_ISOP_UNIFIED(i,j,kbt,k,bid)
+             !print *,"SLX_UNIFIED(i,j,ieast,kbt,k,bid)",SLX_UNIFIED(i,j,ieast,kbt,k,bid)          
+             !print *,"SF_SLX_UNIFIED(i,j,ieast,ktp,k,bid)",SF_SLX_UNIFIED(i,j,ieast,ktp,k,bid)
+             
+             !endif
+
+
             WORK1(i,j) = KAPPA_ISOP_UNIFIED(i,j,ktp,k,bid)                     &
                          * SLX_UNIFIED(i,j,ieast,ktp,k,bid) * dz_unified(k)            &
                          - SF_SLX_UNIFIED(i,j,ieast,ktp,k,bid)
@@ -2616,7 +2662,7 @@
             do i=1,nx_block-1
 
 
-            !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 3 .and. j == 5 .and. n == 1)then
+            !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 .and. n == 1)then
 
 
              !print *,"Changed"
@@ -2666,7 +2712,7 @@
             do i=1,nx_block
 
 
-             !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 4 .and. j == 6 - 1 .and. n == 1)then
+             !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 .and. n == 1)then
 
                    !print *,"changed before"
                    !print *,"FY(i,j,n) contribution is",FY(i,j,n)
@@ -2681,7 +2727,7 @@
                    !print *,"TZjp1 contribution is",TZ_UNIFIED(i,j+1,k,n,bid)
                    !print *,"TZJp1kp1 contribution is",TZ_UNIFIED(i,j+1,kp1,n,bid)
 
-            !endif
+           !endif
 
 
               FY(i,j,n) = FY(i,j,n) - CY(i,j)                          &
@@ -2852,7 +2898,7 @@
               fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
 
-            !if(my_task == master_task .and. nsteps_total == 1 .and. k == 1 .and. i == 4 .and. j == 6 .and. n == 1)then
+            !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 .and. n == 1)then
 
                    !print *,"changed 1 at GTK write is"
                    !print *,"FX(i,j,n)",FX(i,j,n)
@@ -3550,6 +3596,19 @@
        enddo
       enddo
 
+      do k=2,km
+       !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
+       do j=1,ny_block
+        do i=1,nx_block
+
+         if ( ( k > K_MIN(i,j) ) .and. ( k <= KMT_UNIFIED(i,j,bid) ) ) then
+          KAPPA_VERTICAL_UNIFIED(i,j,k,bid) = BUOY_FREQ_SQ_NORM(i,j,k-1)
+         endif
+
+        enddo
+       enddo
+      enddo
+
 
 
  end subroutine buoyancy_frequency_dependent_profile_unified
@@ -3686,6 +3745,15 @@
               - KAPPA_THIC_UNIFIED(i,j,ktp,k+1,bid) * SLX_UNIFIED(i,j,kk,ktp,k+1,bid) &
                                             * dz_unified(k+1) )
 
+      !if(my_task == master_task .and. nsteps_total == 6 .and. k == 2.and. i==3 .and. j==7 .and. kk == 1)then
+
+
+         !print *,"CHanged1"
+         !print *,"WORK2(i,j)",WORK2(3,7,1),k
+
+      !endif
+
+
              WORK2_NEXT(i,j) = c2 * ( &
               KAPPA_THIC_UNIFIED(i,j,ktp,k+1,bid) * SLX_UNIFIED(i,j,kk,ktp,k+1,bid) - &
               KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid) * SLX_UNIFIED(i,j,kk,kbt,k+1,bid) )
@@ -3707,6 +3775,15 @@
 
              WORK2(i,j,kk) = WORK2_NEXT(i,j)
 
+      !if(my_task == master_task .and. nsteps_total == 6 .and. k == 2 .and. i==3 .and. j==7 .and. kk == 1)then
+
+
+         !print *,"CHanged2"
+         !print *,"WORK2(i,j)",WORK2(3,7,1),k
+
+      !endif
+
+
             endif
 
            if ( LMASK(i,j) .and. abs( WORK4_NEXT(i,j) ) < abs( WORK4(i,j,kk ) )) then 
@@ -3725,6 +3802,15 @@
             WORK2(i,j,kk) =  c2 * ( WORK1(i,j,kk)                 &
                            - ( KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid)        &
                               * SLX_UNIFIED(i,j,kk,kbt,k+1,bid) ) )
+
+      !if(my_task == master_task .and. nsteps_total == 6 .and. k == 2 .and. i==3 .and. j==7 .and. kk == 1)then
+
+
+         !print *,"CHanged3"
+         !print *,"WORK2(i,j)",WORK2(3,7,1),k
+
+      !endif
+
 
             WORK1(i,j,kk) = WORK1(i,j,kk) * dz_unified(k+1)
 
@@ -3745,6 +3831,20 @@
 
             if( LMASK(i,j) ) then
 
+         
+      !if(my_task == master_task .and. nsteps_total == 6 .and. k == 2 .and. i==3 .and. j==7 .and. kk == 1)then
+
+
+         !print *,"Changed"
+         !print *,"WORK2(i,j)",WORK2(3,7,1),k
+         !print *,"WORK2_NEXT(i,j)",WORK2_NEXT(i,j)
+         !print *,"KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid)",KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid)
+         !print *,"KAPPA_THIC_UNIFIED(i,j,ktp,k+2,bid)",KAPPA_THIC_UNIFIED(i,j,ktp,k+2,bid)
+
+      !endif
+
+               
+
               WORK2_NEXT(i,j) = c2 * dzwr_unified(k+1) * ( &
                 KAPPA_THIC_UNIFIED(i,j,kbt,k+1,bid) * SLX_UNIFIED(i,j,kk,kbt,k+1,bid) * dz_unified(k+1)- &
                 KAPPA_THIC_UNIFIED(i,j,ktp,k+2,bid) * SLX_UNIFIED(i,j,kk,ktp,k+2,bid) * dz_unified(k+2))
@@ -3760,6 +3860,15 @@
           if( LMASK(i,j) .and. abs( WORK2_NEXT(i,j) ) < abs( WORK2(i,j,kk) ) ) &
             WORK2(i,j,kk) = WORK2_NEXT(i,j)
 
+      !if(my_task == master_task .and. nsteps_total == 6 .and. k == 2 .and. i==3 .and. j==7 .and. kk == 1)then
+
+
+         !print *,"CHanged4"
+         !print *,"WORK2(i,j)",WORK2(3,7,1),k
+
+      !endif
+
+
           if( LMASK(i,j) .and. abs(WORK4_NEXT(i,j)) < abs(WORK4(i,j,kk)) ) &
             WORK4(i,j,kk) = WORK4_NEXT(i,j)
 
@@ -3767,8 +3876,17 @@
           enddo
           !!$OMP END PARALLEL DO
         enddo
-
       enddo
+
+
+
+      !if(my_task == master_task .and. nsteps_total == 6 )then
+
+
+         !print *,"Changed1"
+         !print *,"WORK2(i,j)",WORK2(3,7,1)
+
+      !endif
 
 !-----------------------------------------------------------------------
 !
@@ -3819,6 +3937,21 @@
                 if ( reference_depth(kk) <= TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)  &
                        .and.  k <= KMT_UNIFIED(i,j,bid) ) then
 
+                 !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 .and. kk == 1)then
+
+
+                 !print *,"Changed1"
+                 !print *,"reference_depth(kk)",reference_depth(kk)
+                 !print *,"TLT%DIABATIC_DEPTH(i,j,bid)",TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)
+                 !print *,"WORK1(i,j,1)",WORK1(i,j,1)
+                 !print *,"WORK2(i,j,1)",WORK2(i,j,1)
+                 !print *," KMT(i,j,bid)", KMT_UNIFIED(i,j,bid)
+                 !print *,"WORK5(i,j)",WORK5(i,j)
+                 !print *,"SF_SLX(i,j,1,kk,k,bid)",SF_SLX_UNIFIED(i,j,1,kk,k,bid)
+
+                 !endif
+
+
                        SF_SLX_UNIFIED(i,j,1,kk,k,bid) = reference_depth(kk) * WORK5(i,j)  &
                              * ( c2 * WORK1(i,j,1) + TLT_UNIFIED%THICKNESS(i,j,bid)       &
                                 * WORK2(i,j,1) )
@@ -3848,6 +3981,23 @@
                  if ( reference_depth(kk) > TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)   &
                 .and.  reference_depth(kk) <= TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid) &
                 .and.  k <= KMT_UNIFIED(i,j,bid) ) then
+
+
+                 !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 .and. kk == 1 )then
+
+
+                 !print *,"Changed2"
+                 !print *,"reference_depth(kk)",reference_depth(kk)
+                 !print *,"TLT%DIABATIC_DEPTH(i,j,bid)",TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)
+                 !print *,"WORK1(i,j,1)",WORK1(i,j,1)
+                 !print *,"WORK2(i,j,1)",WORK2(i,j,1)
+                 !print *," KMT(i,j,bid)", KMT_UNIFIED(i,j,bid)
+                 !print *,"WORK5(i,j)",WORK5(i,j)
+                 !print *,"SF_SLX(i,j,1,kk,k,bid)",SF_SLX_UNIFIED(i,j,1,kk,k,bid)
+                 !print *,"WORK7(i,j)",WORK7(i,j)
+
+                 !endif
+
 
                        WORK7(i,j) = (TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)  &
                                        - reference_depth(kk))**2
@@ -3892,6 +4042,21 @@
 
                  if ( reference_depth(kk) > TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)  & 
                        .and.  k <= KMT_UNIFIED(i,j,bid) ) then
+
+
+               !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 .and. kk == 1)then
+
+
+                 !print *,"changed3"
+                 !print *,"reference_depth(kk)",reference_depth(kk)
+                 !print *,"TLT%DIABATIC_DEPTH(i,j,bid)",TLT_UNIFIED%INTERIOR_DEPTH(i,j,bid)
+                 !print *," KMT(i,j,bid)", KMT_UNIFIED(i,j,bid)
+                 !print *,"KAPPA_THIC(i,j,kk,k,bid)",KAPPA_THIC_UNIFIED(i,j,kk,k,bid)
+                 !print *,"dz(k)",dz_unified(k)
+                 !print *,"SF_SLX(i,j,1,kk,k,bid)",SF_SLX_UNIFIED(i,j,1,kk,k,bid)
+
+                !endif
+
 
                      SF_SLX_UNIFIED(i,j,1,kk,k,bid) =  KAPPA_THIC_UNIFIED(i,j,kk,k,bid)  &
                                        * SLX_UNIFIED(i,j,1,kk,k,bid) * dz_unified(k)

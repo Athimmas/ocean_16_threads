@@ -582,9 +582,9 @@
 
        endif
 
-      !if( nsteps_total == 1 .and. k == 1 .and. my_task == master_task) then
+      !if( nsteps_total == 6 .and. k == 1 .and. my_task == master_task) then
 
-      !print *,"org cont HDTK is ",HDTK_BUF(4,6,1,1)  
+      !print *,"org cont HDTK is ",HDTK_BUF(3,7,1,1)  
 
       !endif
 
@@ -640,9 +640,9 @@
 
    endif
    
-       !if(nsteps_total == 1 .and. k == 1 .and. my_task == master_task ) then
+       !if(nsteps_total == 6 .and. k == 1 .and. my_task == master_task ) then
 
-         !print *,"org cont TDTK is ",TDTK(4,6,1,1) 
+         !print *,"org cont TDTK is ",TDTK(3,7,1,1) 
 
       !endif
  
