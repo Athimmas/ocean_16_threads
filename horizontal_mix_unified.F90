@@ -407,7 +407,13 @@
  use omp_lib
  use hmix_gm
  use hmix_gm_submeso_share, only: HXY,HYX
+ use blocks
   
+   integer :: iblock
+
+  type (block) ::        &
+      this_block           ! block information for current block
+
 
    if( .not. allocated (HXY_UNIFIED)) then
 
@@ -430,18 +436,20 @@
    allocate (SF_SUBM_X_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic))
    allocate (SF_SUBM_Y_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic))
 
-   allocate (HMXL_UNIFIED(nx_block,ny_block,nblocks_clinic))
- 
    allocate (HOR_DIFF_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
-
 
    allocate(WTOP_ISOP_UNIFIED(nx_block,ny_block,nblocks_clinic), &
               WBOT_ISOP_UNIFIED(nx_block,ny_block,nblocks_clinic), &
                     UIT_UNIFIED(nx_block,ny_block,nblocks_clinic), &
                     VIT_UNIFIED(nx_block,ny_block,nblocks_clinic))
 
-   allocate (KPP_HBLT_UNIFIED(nx_block,ny_block,nblocks_clinic), &
-            BOLUS_SP_UNIFIED(nx_block,ny_block,nblocks_clinic))
+   !------------------------done list--------------------------------!
+
+   allocate (HMXL_UNIFIED(nx_block_unified,ny_block_unified,1))
+   allocate (KPP_HBLT_UNIFIED(nx_block_unified,ny_block_unified,1), &
+            BOLUS_SP_UNIFIED(nx_block_unified,ny_block_unified,1))
+
+   !------------------------------------------------------------------!
 
    endif
 
@@ -455,9 +463,12 @@
    RX_UNIFIED       = c0
    RY_UNIFIED       = c0
    RZ_SAVE_UNIFIED  = c0
-   HMXL_UNIFIED = HMXL
-   KPP_HBLT_UNIFIED = KPP_HBLT
-   HOR_DIFF_UNIFIED = HOR_DIFF
+
+    do iblock = 1,nblocks_clinic
+       this_block = get_block(blocks_clinic(iblock),iblock)
+       call merger(HMXL(:,:,iblock),HMXL_UNIFIED(:,:,1),iblock,this_block)
+       call merger(KPP_HBLT(:,:,iblock),KPP_HBLT_UNIFIED(:,:,1),iblock,this_block)
+    enddo
 
    !if(my_task == master_task) print *,"HYX is",HYX_UNIFIED(45,45,1),HYX(45,45,1)
 
@@ -4224,6 +4235,175 @@
 !EOC
 
       end subroutine apply_vertical_profile_to_isop_hor_diff_unified
+
+ subroutine merger (TCUR , ARRAY , iblock , this_block )
+
+ !-----------INPUT VARAIBLES-----------------------------------! 
+
+ real (r8), dimension(nx_block,ny_block), intent(in) :: TCUR 
+
+ integer (int_kind), intent(in) :: iblock
+
+ type (block), intent(in) ::       &
+      this_block           ! block information for current block
+
+ !-----------OUTPUT VARIABLES----------------------------------!
+
+ real (r8), dimension(nx_block_unified,ny_block_unified), intent(out) :: ARRAY
+
+ !local variables
+
+   integer (int_kind) :: k
+
+   integer (int_kind) :: my_grid_blockno, block_row, &
+   block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je,i_index,j_index
+
+   !logical (log_kind) :: written(164,196,60)
+
+   !integer (int_kind) :: written_byi(164,196,60)
+
+   !integer (int_kind) :: written_byj(164,196,60)
+
+   !integer (int_kind) :: written_byk(164,196,60)
+
+   !integer (int_kind) :: written_by_block(164,196,60)
+  
+   integer (int_kind) :: i,j  
+
+ !-------------------------------------------------------------!
+
+
+         my_grid_blockno = iblock - 1
+
+         block_row = int( my_grid_blockno / 4  )
+
+         block_col = mod(my_grid_blockno,4)
+
+         i_start = block_col * (nx_block - 4) + 1 + 2
+
+         j_start = block_row * (ny_block - 4) + 1 + 2
+
+         i_end = i_start + (this_block%ie - this_block%ib) 
+
+         j_end = j_start + (this_block%je - this_block%jb)
+
+         ib = this_block%ib
+ 
+         jb = this_block%jb
+
+         ie = this_block%ie 
+
+         je = this_block%je
+
+         if(block_row == 0 ) then
+
+         j_start = 1
+         jb = 1 
+
+         endif
+
+         if(block_row == 3 ) then
+
+         j_start = j_start
+         je = this_block%je + 2
+
+         endif
+ 
+         if(block_col == 0 ) then
+
+         i_start = 1
+         ib = 1  
+
+         endif 
+
+         if(block_col == 3 ) then
+
+         i_start = i_start
+         ie = this_block%ie + 2
+
+         endif
+ 
+
+            j_index = j_start
+             do j=jb,je
+                   i_index = i_start
+                     do i=ib,ie
+
+                       ARRAY(i_index,j_index) = TCUR(i,j)
+
+                       i_index = i_index + 1
+
+
+                      end do
+                j_index = j_index + 1
+            end do
+ 
+ end subroutine merger 
+
+
+
+ subroutine splitter (SPLIT_ARRAY , MERGED_ARRAY , iblock , this_block )
+
+ !-----------INPUT VARAIBLES-----------------------------------! 
+
+ real (r8), dimension(nx_block_unified,ny_block_unified), intent(in) :: MERGED_ARRAY
+
+ integer (int_kind), intent(in) :: iblock
+
+ type (block), intent(in) ::       &
+      this_block           ! block information for current block
+
+ !-----------OUTPUT VARIABLES----------------------------------!
+
+ real (r8), dimension(nx_block,ny_block), intent(out) :: SPLIT_ARRAY
+
+ !local variables
+
+   integer (int_kind) :: k
+
+   integer (int_kind) :: my_grid_blockno, block_row, &
+   block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je,i_index,j_index
+
+   !logical (log_kind) :: written(164,196,60)
+
+   !integer (int_kind) :: written_byi(164,196,60)
+
+   !integer (int_kind) :: written_byj(164,196,60)
+
+   !integer (int_kind) :: written_byk(164,196,60)
+
+   !integer (int_kind) :: written_by_block(164,196,60)
+  
+   integer (int_kind) :: i,j  
+
+ !-------------------------------------------------------------!
+
+
+         my_grid_blockno = iblock - 1
+
+         block_row = int( my_grid_blockno / 4  )
+
+         block_col = mod(my_grid_blockno,4)
+
+         i_start = block_col * (nx_block - 4) + 1
+
+         j_start = block_row * (ny_block - 4) + 1
+
+         j_index = j_start
+           do j=1,ny_block
+               i_index = i_start
+                 do i=1,nx_block
+
+                     SPLIT_ARRAY(i,j) = MERGED_ARRAY(i_index,j_index)
+                     i_index = i_index + 1
+
+
+                  end do
+               j_index = j_index + 1
+           end do
+
+ 
+ end subroutine splitter 
 
  end module horizontal_mix_unified
 

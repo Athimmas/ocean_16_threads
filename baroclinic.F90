@@ -1846,16 +1846,16 @@
    !$omp barrier
    if(k==1)then
 
-   HMXL_UNIFIED = HMXL
-   KPP_HBLT_UNIFIED = KPP_HBLT
-   VDC_UNIFIED = VDC
-   VDC_GM_UNIFIED = VDC_GM 
-   !$omp barrier
+   !HMXL_UNIFIED = HMXL
+   !KPP_HBLT_UNIFIED = KPP_HBLT
+   !VDC_UNIFIED = VDC
+   !VDC_GM_UNIFIED = VDC_GM 
+   !!$omp barrier
 
    !start_time = omp_get_wtime()
-   do kk=1,km
-   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
-   enddo
+   !do kk=1,km
+   !call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
+   !enddo
 
    !end_time = omp_get_wtime()
 
@@ -2252,7 +2252,7 @@
 
  !-----------OUTPUT VARIABLES----------------------------------!
 
- real (r8), dimension(164,196), intent(out) :: ARRAY
+ real (r8), dimension(nx_block_unified,ny_block_unified), intent(out) :: ARRAY
 
  !local variables
 
@@ -2349,7 +2349,7 @@
 
  !-----------INPUT VARAIBLES-----------------------------------! 
 
- real (r8), dimension(164,196), intent(in) :: MERGED_ARRAY
+ real (r8), dimension(nx_block_unified,ny_block_unified), intent(in) :: MERGED_ARRAY
 
  integer (int_kind), intent(in) :: iblock
 
