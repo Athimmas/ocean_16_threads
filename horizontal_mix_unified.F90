@@ -141,13 +141,13 @@
 !GRID related variables
 
    !dir$ attributes offload : mic :: KMT_UNIFIED
-   integer (POP_i4), dimension(nx_block,ny_block,max_blocks_clinic), &
+   integer (POP_i4), dimension(nx_block_unified,ny_block_unified,1), &
       public :: &
       KMT_UNIFIED
 
    !dir$ attributes offload : mic :: KMTN_UNIFIED
    !dir$ attributes offload : mic :: KMTE_UNIFIED
-   integer (POP_i4), dimension(nx_block,ny_block,max_blocks_clinic), &
+   integer (POP_i4), dimension(nx_block_unified,ny_block_unified,1), &
       public :: &
       KMTN_UNIFIED,KMTE_UNIFIED
 
@@ -159,7 +159,7 @@
    !dir$ attributes offload:mic :: DYT_UNIFIED
    !dir$ attributes offload:mic :: HUS_UNIFIED
    !dir$ attributes offload:mic :: HUW_UNIFIED
-   real (POP_r8), dimension(nx_block,ny_block,max_blocks_clinic), public :: &
+   real (POP_r8), dimension(nx_block_unified,ny_block_unified,1), public :: &
       DYT_UNIFIED, DXT_UNIFIED,HUS_UNIFIED,HUW_UNIFIED
 
       !*** dimension(1:km)
@@ -185,7 +185,7 @@
    !dir$ attributes offload:mic :: HTN_UNIFIED
    !dir$ attributes offload:mic :: HTE_UNIFIED
    !dir$ attributes offload:mic :: TAREA_R_UNIFIED
-   real (POP_r8), dimension(nx_block,ny_block,max_blocks_clinic), public :: &
+   real (POP_r8), dimension(nx_block_unified,ny_block_unified,1), public :: &
    HTN_UNIFIED, HTE_UNIFIED,TAREA_R_UNIFIED
 
 
@@ -409,7 +409,7 @@
  use hmix_gm_submeso_share, only: HXY,HYX
  use blocks
   
-   integer :: iblock
+   integer :: iblock,k
 
   type (block) ::        &
       this_block           ! block information for current block
@@ -488,11 +488,25 @@
 
    endif
 
+   !------------------------------------------------------------------!
+
+      do iblock = 1,nblocks_clinic
+       this_block = get_block(blocks_clinic(iblock),iblock)
+       call merger_integer( KMT (:,:,iblock), KMT_UNIFIED (:,:,1), iblock, this_block)
+       call merger_integer( KMTE(:,:,iblock), KMTE_UNIFIED(:,:,1), iblock, this_block)
+       call merger_integer( KMTN(:,:,iblock), KMTN_UNIFIED(:,:,1), iblock, this_block)
+       call merger( DXT(:,:,iblock),  DXT_UNIFIED(:,:,1), iblock, this_block)
+       call merger( DYT(:,:,iblock),  DYT_UNIFIED(:,:,1), iblock, this_block)
+       call merger( HUS(:,:,iblock),  HUS_UNIFIED(:,:,1), iblock, this_block)
+       call merger( HUW(:,:,iblock),  HUW_UNIFIED(:,:,1), iblock, this_block)
+       call merger( HTE(:,:,iblock),  HTE_UNIFIED(:,:,1), iblock, this_block) 
+       call merger( HTN(:,:,iblock),  HTN_UNIFIED(:,:,1), iblock, this_block)
+       call merger( TAREA_R(:,:,iblock),  TAREA_R_UNIFIED(:,:,1), iblock, this_block)
+      enddo
+
+   !------------------------------------------------------------------!
+
    pressz_unified = pressz
-   KMT_UNIFIED = KMT
-   KMTE_UNIFIED = KMTE
-   KMTN_UNIFIED = KMTN
-   DZT_UNIFIED = DZT
 
    dz_unified = dz
    dzr_unified = dzr
@@ -502,13 +516,13 @@
    dzwr_unified = dzwr
    
 
-   DXT_UNIFIED = DXT
-   DYT_UNIFIED = DYT
-   HTE_UNIFIED = HTE
-   HTN_UNIFIED = HTN
-   TAREA_R_UNIFIED = TAREA_R
-   HUS_UNIFIED = HUS
-   HUW_UNIFIED = HUW
+   !DXT_UNIFIED = DXT
+   !DYT_UNIFIED = DYT
+   !HTE_UNIFIED = HTE
+   !HTN_UNIFIED = HTN
+   !TAREA_R_UNIFIED = TAREA_R
+   !HUS_UNIFIED = HUS
+   !HUW_UNIFIED = HUW
 
    !if(my_task == master_task) print *,"KMT is",KMT_UNIFIED(45,45,1),KMT(45,45,1)
 
@@ -1740,7 +1754,7 @@
       real (r8) :: &
          fz, factor 
  
-      real (r8), dimension(nx_block,ny_block) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified) :: &
          CX, CY,                  &
          WORK1, WORK2,            &! local work space
          KMASK                     ! ocean mask
@@ -2060,7 +2074,7 @@
       real (r8) :: &
          fz, dz_bottom, factor,fzprev, KMASKprev, WORK3prev, dzbottomprev
 
-      real (r8), dimension(nx_block,ny_block) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified) :: &
          CX, CY,                  &
          RZ,                      &! Dz(rho)
          SLA,                     &! absolute value of slope
@@ -2071,7 +2085,7 @@
          UIB, VIB,                &! work arrays for isopycnal mixing velocities
          U_ISOP, V_ISOP            ! horizontal components of isopycnal velocities
 
-      real (r8), dimension(nx_block,ny_block,nt) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,nt) :: &
          FX, FY                     ! fluxes across east, north faces
 
       real (r8), dimension(2) :: &
@@ -3231,7 +3245,7 @@
          K_START,   &        ! work arrays for TLT%K_LEVEL and 
          K_SUB               !  TLT%ZTW, respectively
 
-      logical (log_kind), dimension(nx_block,ny_block) :: &
+      logical (log_kind), dimension(nx_block_unified,ny_block_unified) :: &
          COMPUTE_TLT         ! flag
 
       real (r8), dimension(nx_block,ny_block) :: &
@@ -3508,7 +3522,7 @@
          k,        &          ! vertical loop index
          bid,i,j              ! local block address for this sub block
 
-      integer (int_kind), dimension(nx_block,ny_block) :: &
+      integer (int_kind), dimension(nx_block_unified,ny_block_unified) :: &
          K_MIN                ! k index below SDL 
 
       real (r8), dimension(nx_block,ny_block) :: &
@@ -4405,6 +4419,176 @@
 
  
  end subroutine splitter 
+
+
+ subroutine merger_integer (TCUR , ARRAY , iblock , this_block )
+
+ !-----------INPUT VARAIBLES-----------------------------------! 
+
+ integer (int_kind), dimension(nx_block,ny_block), intent(in) :: TCUR 
+
+ integer (int_kind), intent(in) :: iblock
+
+ type (block), intent(in) ::       &
+      this_block           ! block information for current block
+
+ !-----------OUTPUT VARIABLES----------------------------------!
+
+ integer (int_kind), dimension(nx_block_unified,ny_block_unified), intent(out) :: ARRAY
+
+ !local variables
+
+   integer (int_kind) :: k
+
+   integer (int_kind) :: my_grid_blockno, block_row, &
+   block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je,i_index,j_index
+
+   !logical (log_kind) :: written(164,196,60)
+
+   !integer (int_kind) :: written_byi(164,196,60)
+
+   !integer (int_kind) :: written_byj(164,196,60)
+
+   !integer (int_kind) :: written_byk(164,196,60)
+
+   !integer (int_kind) :: written_by_block(164,196,60)
+  
+   integer (int_kind) :: i,j  
+
+ !-------------------------------------------------------------!
+
+
+         my_grid_blockno = iblock - 1
+
+         block_row = int( my_grid_blockno / 4  )
+
+         block_col = mod(my_grid_blockno,4)
+
+         i_start = block_col * (nx_block - 4) + 1 + 2
+
+         j_start = block_row * (ny_block - 4) + 1 + 2
+
+         i_end = i_start + (this_block%ie - this_block%ib) 
+
+         j_end = j_start + (this_block%je - this_block%jb)
+
+         ib = this_block%ib
+ 
+         jb = this_block%jb
+
+         ie = this_block%ie 
+
+         je = this_block%je
+
+         if(block_row == 0 ) then
+
+         j_start = 1
+         jb = 1 
+
+         endif
+
+         if(block_row == 3 ) then
+
+         j_start = j_start
+         je = this_block%je + 2
+
+         endif
+ 
+         if(block_col == 0 ) then
+
+         i_start = 1
+         ib = 1  
+
+         endif 
+
+         if(block_col == 3 ) then
+
+         i_start = i_start
+         ie = this_block%ie + 2
+
+         endif
+ 
+
+            j_index = j_start
+             do j=jb,je
+                   i_index = i_start
+                     do i=ib,ie
+
+                       ARRAY(i_index,j_index) = TCUR(i,j)
+
+                       i_index = i_index + 1
+
+
+                      end do
+                j_index = j_index + 1
+            end do
+ 
+ end subroutine merger_integer 
+
+
+
+ subroutine splitter_integer (SPLIT_ARRAY , MERGED_ARRAY , iblock , this_block )
+
+ !-----------INPUT VARAIBLES-----------------------------------! 
+
+ integer (int_kind), dimension(nx_block_unified,ny_block_unified), intent(in) :: MERGED_ARRAY
+
+ integer (int_kind), intent(in) :: iblock
+
+ type (block), intent(in) ::       &
+      this_block           ! block information for current block
+
+ !-----------OUTPUT VARIABLES----------------------------------!
+
+ integer (int_kind), dimension(nx_block,ny_block), intent(out) :: SPLIT_ARRAY
+
+ !local variables
+
+   integer (int_kind) :: k
+
+   integer (int_kind) :: my_grid_blockno, block_row, &
+   block_col,i_start,j_start,i_end,j_end,ib,ie,jb,je,i_index,j_index
+
+   !logical (log_kind) :: written(164,196,60)
+
+   !integer (int_kind) :: written_byi(164,196,60)
+
+   !integer (int_kind) :: written_byj(164,196,60)
+
+   !integer (int_kind) :: written_byk(164,196,60)
+
+   !integer (int_kind) :: written_by_block(164,196,60)
+  
+   integer (int_kind) :: i,j  
+
+ !-------------------------------------------------------------!
+
+
+         my_grid_blockno = iblock - 1
+
+         block_row = int( my_grid_blockno / 4  )
+
+         block_col = mod(my_grid_blockno,4)
+
+         i_start = block_col * (nx_block - 4) + 1
+
+         j_start = block_row * (ny_block - 4) + 1
+
+         j_index = j_start
+           do j=1,ny_block
+               i_index = i_start
+                 do i=1,nx_block
+
+                     SPLIT_ARRAY(i,j) = MERGED_ARRAY(i_index,j_index)
+                     i_index = i_index + 1
+
+
+                  end do
+               j_index = j_index + 1
+           end do
+
+ 
+ end subroutine splitter_integer
 
  end module horizontal_mix_unified
 
