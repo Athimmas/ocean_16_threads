@@ -419,42 +419,41 @@
 
    print *,"Intializing unified grids"
 
-   allocate (HXY_UNIFIED (nx_block,ny_block,nblocks_clinic),    &
-             HYX_UNIFIED (nx_block,ny_block,nblocks_clinic))
-   allocate (SLX_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic),  &
-             SLY_UNIFIED   (nx_block,ny_block,2,2,km,nblocks_clinic))
+  !------------------------done list--------------------------------!
 
-   allocate (TX_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic),  &
-             TY_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic),  &
-             TZ_UNIFIED(nx_block,ny_block,km,nt,nblocks_clinic))
+   allocate (SLX_UNIFIED   (nx_block_unified,ny_block_unified,2,2,km,nblocks_clinic),  &
+             SLY_UNIFIED   (nx_block_unified,ny_block_unified,2,2,km,nblocks_clinic))
 
-   allocate (RX_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic),  &
-             RY_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
+   allocate (TX_UNIFIED(nx_block_unified,ny_block_unified,km,nt,nblocks_clinic),  &
+             TY_UNIFIED(nx_block_unified,ny_block_unified,km,nt,nblocks_clinic),  &
+             TZ_UNIFIED(nx_block_unified,ny_block_unified,km,nt,nblocks_clinic))
 
-   allocate (RZ_SAVE_UNIFIED(nx_block,ny_block,km,nblocks_clinic))
+   allocate (RX_UNIFIED(nx_block_unified,ny_block_unified,2,km,nblocks_clinic),  &
+             RY_UNIFIED(nx_block_unified,ny_block_unified,2,km,nblocks_clinic))
 
-   allocate (SF_SUBM_X_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic))
-   allocate (SF_SUBM_Y_UNIFIED(nx_block,ny_block,2,2,km,nblocks_clinic))
+   allocate (RZ_SAVE_UNIFIED(nx_block_unified,ny_block_unified,km,nblocks_clinic))
 
-   allocate (HOR_DIFF_UNIFIED(nx_block,ny_block,2,km,nblocks_clinic))
+   allocate (SF_SUBM_X_UNIFIED(nx_block_unified,ny_block_unified,2,2,km,nblocks_clinic))
+   allocate (SF_SUBM_Y_UNIFIED(nx_block_unified,ny_block_unified,2,2,km,nblocks_clinic))
 
-   allocate(WTOP_ISOP_UNIFIED(nx_block,ny_block,nblocks_clinic), &
-              WBOT_ISOP_UNIFIED(nx_block,ny_block,nblocks_clinic), &
-                    UIT_UNIFIED(nx_block,ny_block,nblocks_clinic), &
-                    VIT_UNIFIED(nx_block,ny_block,nblocks_clinic))
+   allocate (HOR_DIFF_UNIFIED(nx_block_unified,ny_block_unified,2,km,nblocks_clinic))
 
-   !------------------------done list--------------------------------!
+   allocate(WTOP_ISOP_UNIFIED(nx_block_unified,ny_block_unified,nblocks_clinic), &
+              WBOT_ISOP_UNIFIED(nx_block_unified,ny_block_unified,nblocks_clinic), &
+                    UIT_UNIFIED(nx_block_unified,ny_block_unified,nblocks_clinic), &
+                    VIT_UNIFIED(nx_block_unified,ny_block_unified,nblocks_clinic))
 
    allocate (HMXL_UNIFIED(nx_block_unified,ny_block_unified,1))
-   allocate (KPP_HBLT_UNIFIED(nx_block_unified,ny_block_unified,1), &
-            BOLUS_SP_UNIFIED(nx_block_unified,ny_block_unified,1))
+   allocate (KPP_HBLT_UNIFIED(nx_block_unified,ny_block_unified,1))
+
+  allocate (HXY_UNIFIED (nx_block_unified,ny_block_unified,1),    &
+            HYX_UNIFIED (nx_block_unified,ny_block_unified,1))
+
 
    !------------------------------------------------------------------!
 
    endif
 
-   HXY_UNIFIED      = HXY
-   HYX_UNIFIED      = HYX
    SLX_UNIFIED      = c0
    SLY_UNIFIED      = c0
    TX_UNIFIED       = c0
@@ -466,8 +465,10 @@
 
     do iblock = 1,nblocks_clinic
        this_block = get_block(blocks_clinic(iblock),iblock)
-       call merger(HMXL(:,:,iblock),HMXL_UNIFIED(:,:,1),iblock,this_block)
-       call merger(KPP_HBLT(:,:,iblock),KPP_HBLT_UNIFIED(:,:,1),iblock,this_block)
+       call merger( HMXL(:,:,iblock), HMXL_UNIFIED(:,:,1), iblock, this_block)
+       call merger( KPP_HBLT(:,:,iblock), KPP_HBLT_UNIFIED(:,:,1), iblock, this_block)
+       call merger( HXY(:,:,iblock), HXY_UNIFIED(:,:,1) , iblock, this_block)
+       call merger( HYX(:,:,iblock), HYX_UNIFIED(:,:,1) , iblock, this_block)   
     enddo
 
    !if(my_task == master_task) print *,"HYX is",HYX_UNIFIED(45,45,1),HYX(45,45,1)
