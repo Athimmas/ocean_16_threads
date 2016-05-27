@@ -100,8 +100,9 @@
    logical (log_kind) :: &
       reset_to_freezing   ! flag to prevent very cold water
 
-   real (r8) ,dimension(:,:,:,:),allocatable,save :: TMIX_COMB 
-   real (r8) ,dimension(:,:,:,:,:),allocatable,save :: SPLIT_ARRAY
+   real (r8) ,dimension(:,:,:,:,:),allocatable,save :: TCUR_UNIFIED
+   real (r8) ,dimension(:,:,:,:),allocatable,save :: UCUR_UNIFIED
+   real (r8) ,dimension(:,:,:,:),allocatable,save :: VCUR_UNIFIED 
 
    integer, save :: done = 1
 
@@ -463,13 +464,11 @@
 
  call flushm (stdout)
 
- allocate(TMIX_COMB(nx_block_unified,ny_block_unified,km,nt))
- allocate(SPLIT_ARRAY(nx_block,ny_block,km,nt,16))
+ allocate(TCUR_UNIFIED(nx_block_unified,ny_block_unified,km,nt,1))
+ allocate(UCUR_UNIFIED(nx_block_unified,ny_block_unified,km,1))
+ allocate(VCUR_UNIFIED(nx_block_unified,ny_block_unified,km,1)) 
  allocate(WORKN_PHI_TEMP(nx_block,ny_block,nt,km,nblocks_clinic))
  allocate(WORKN_PHI_TEMP2(nx_block,ny_block,nt,km,nblocks_clinic))
-
- print *,nx_block_unified,ny_block_unified
- print *,nx_block,ny_block  
 
  end subroutine init_baroclinic
 
@@ -588,16 +587,24 @@
 !
 !-----------------------------------------------------------------------
 
-  !if (my_task == master_task .and. done == 1) then
-     !!$OMP PARALLEL DO PRIVATE(iblock)
-     !do iblock = 1,nblocks_clinic
-      !this_block = get_block(blocks_clinic(iblock),iblock)
-       !do k=1,km
-        !do n=1,nt
-           !call merger(TRACER (:,:,k,1,mixtime,iblock) , TMIX_COMB(:,:,k,1) , iblock ,this_block)
-        !enddo
-       !enddo
-     !enddo
+     !$OMP PARALLEL DO PRIVATE(iblock)
+     do iblock = 1,nblocks_clinic
+      this_block = get_block(blocks_clinic(iblock),iblock)
+       do k=1,km
+        do n=1,nt
+           call merger(TRACER (:,:,k,n,curtime,iblock) , TCUR_UNIFIED(:,:,k,n,1) , iblock ,this_block)
+        enddo
+       enddo
+     enddo
+
+     !$OMP PARALLEL DO PRIVATE(iblock)
+      do iblock = 1,nblocks_clinic
+      this_block = get_block(blocks_clinic(iblock),iblock)
+       do k=1,km
+          call merger(UVEL(:,:,k,curtime,iblock) , UCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
+          call merger(VVEL(:,:,k,curtime,iblock) , VCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
+       enddo
+      enddo
 
 
    !open(unit=10,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo.txt",status="unknown",position="append",action="write",form="formatted")
@@ -605,10 +612,10 @@
 
    !do iblock = 1,nblocks_clinic
         !do k=1,km
-         !do j=1,52
-            !do i=1,44
+         !do j=1,ny_block
+            !do i=1,nx_block
 
-            !          write(10,*),TRACER (i,j,k,1,curtime,iblock),i,j,k,iblock
+                      !write(10,*),TRACER (i,j,k,1,curtime,iblock),i,j,k,iblock
 
             !enddo
          !enddo
@@ -620,15 +627,15 @@
       !this_block = get_block(blocks_clinic(iblock),iblock)
 
       !do k=1,km
-         !call splitter(SPLIT_ARRAY(:,:,k,1,iblock),TMIX_COMB(:,:,k,1), iblock,this_block )
+         !call splitter(SPLIT_ARRAY(:,:,k,1,iblock),TMIX_COMB(:,:,k,1,1), iblock,this_block )
       !enddo
 
    !enddo 
 
    !do iblock = 1,nblocks_clinic
         !do k=1,km
-         !do j=1,52
-           !do i=1,44
+         !do j=1,ny_block
+           !do i=1,nx_block
 
              !write(11,*),SPLIT_ARRAY(i,j,k,1,iblock),i,j,k,iblock
 
@@ -1876,9 +1883,9 @@
 
    !start_time = omp_get_wtime()
 
-   !do kk=1,km
-   !call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
-   !enddo
+   do kk=1,km
+   call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
+   enddo
 
    !end_time = omp_get_wtime()
 
@@ -1889,13 +1896,13 @@
    endif
 
 
-   WORKN = WORKN_PHI_TEMP(:,:,:,k,bid)
+   WORKN = WORKN_PHI_TEMP2(:,:,:,k,bid)
 
-   !$omp barrier
-   if (k == 1) then
-   VDC = VDC_UNIFIED
-   VDC_GM = VDC_GM_UNIFIED
-   endif
+   !!$omp barrier
+   !if (k == 1) then
+   !VDC = VDC_UNIFIED
+   !VDC_GM = VDC_GM_UNIFIED
+   !endif
 
    !$omp barrier
   !if(my_task == master_task .and. k == 1  ) then
