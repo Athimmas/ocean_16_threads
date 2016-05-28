@@ -1809,7 +1809,7 @@
 
    integer (int_kind) :: &
       n,kk,              &! dummy tracer index
-      bid,i,j             ! local_block id
+      bid,i,j,temp        ! local_block id
 
    real (r8), dimension(nx_block,ny_block,nt) :: &
       FT,                &! sum of terms in dT/dt for the nth tracer
@@ -1848,8 +1848,17 @@
    call merger( HMXL(:,:,bid), HMXL_UNIFIED(:,:,1), bid , this_block)
    call merger( KPP_HBLT(:,:,bid), KPP_HBLT_UNIFIED(:,:,1), bid , this_block)
 
-   !VDC_UNIFIED = VDC
-   !VDC_GM_UNIFIED = VDC_GM 
+   do kk=1,km
+   call merger( VDC_GM(:,:,kk,bid), VDC_GM_UNIFIED(:,:,kk,1), bid, this_block )
+   enddo
+
+   do kk=1,km
+    do temp=1,2
+     call merger( VDC(:,:,kk,temp,bid), VDC_UNIFIED(:,:,kk,temp,1), bid, this_block )
+    enddo
+   enddo
+ 
+
    !$omp barrier
 
    if(bid == 1) then
