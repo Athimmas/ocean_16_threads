@@ -543,7 +543,7 @@
       i,j,                &! dummy indices for horizontal directions
       n,k,                &! dummy indices for vertical level, tracer
       iblock,             &! counter for block loops
-      kp1,km1              ! level index for k+1, k-1 levels
+      kp1,km1,kk,temp      ! level index for k+1, k-1 levels
 
    real (r8), dimension(nx_block,ny_block) :: & 
       FX,FY,              &! sum of r.h.s. forcing terms
@@ -652,11 +652,26 @@
 
    !endif
 
+   do iblock = 1,nblocks_clinic
+   this_block = get_block(blocks_clinic(iblock),iblock)
+
+   do kk=1,km
+   call splitter( VDC_GM(:,:,kk,iblock), VDC_GM_UNIFIED(:,:,kk,1), iblock, this_block )
+   enddo
+
+   do kk=0,km+1
+    do temp=1,2
+     call merger( VDC(:,:,kk,temp,iblock), VDC_UNIFIED(:,:,kk,temp,1),iblock ,this_block )
+    enddo
+   enddo
+  enddo
+
+
 
    !$OMP PARALLEL DO PRIVATE(iblock,this_block,k,kp1,km1,WTK,WORK1,factor)
 
    do iblock = 1,nblocks_clinic
-      this_block = get_block(blocks_clinic(iblock),iblock)  
+      this_block = get_block(blocks_clinic(iblock),iblock) 
 
       do k = 1,km 
 
@@ -1852,7 +1867,7 @@
    call merger( VDC_GM(:,:,kk,bid), VDC_GM_UNIFIED(:,:,kk,1), bid, this_block )
    enddo
 
-   do kk=1,km
+   do kk=0,km+1
     do temp=1,2
      call merger( VDC(:,:,kk,temp,bid), VDC_UNIFIED(:,:,kk,temp,1), bid, this_block )
     enddo
@@ -1864,7 +1879,7 @@
    if(bid == 1) then
    !start_time = omp_get_wtime()
    do kk=1,km
-   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,bid), TCUR_UNIFIED(:,:,:,:,1), UCUR_UNIFIED(:,:,:,1), VCUR_UNIFIED(:,:,:,1), this_block)
+   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,1), TCUR_UNIFIED(:,:,:,:,1), UCUR_UNIFIED(:,:,:,1), VCUR_UNIFIED(:,:,:,1), this_block)
    enddo
    endif
 
@@ -1906,8 +1921,19 @@
 
    endif
 
+   !$omp barrier
 
-   WORKN = WORKN_PHI_TEMP2(:,:,:,k,bid)
+   do n=1,nt
+   call splitter(WORKN(:,:,n),WORKN_PHI_TEMP(:,:,n,k,1),bid,this_block)
+   enddo
+
+   if(nsteps_total == 6 .and. bid == 1  .and. my_task == master_task) then
+ 
+   print *,"values are", WORKN_PHI_TEMP2(39,42,1,k,bid),WORKN(39,42,1),k 
+
+   endif
+
+   !WORKN = WORKN_PHI_TEMP2(:,:,:,k,bid)
 
    !!$omp barrier
    !if (k == 1) then

@@ -867,7 +867,7 @@
         kk=1
 
             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,KMASKE,KMASKN,tempi,tempip1,tempj,tempjp1)num_threads(60)
-            do j=1,ny_block
+            do j=1,ny_block_unified
               do i=1,nx_block_unified
 
 
@@ -1702,6 +1702,7 @@
      do j=this_block%jb,this_block%je
        do i=this_block%ib,this_block%ie
 
+
          if ( k < KMT_UNIFIED(i,j,bid)  .and.  ( zw_unified(k) < max( ML_DEPTH(i,j),  &
               ML_DEPTH(i+1,j), ML_DEPTH(i-1,j), ML_DEPTH(i,j+1),      &
               ML_DEPTH(i,j-1) ) ) ) then
@@ -1864,6 +1865,7 @@
 
         do j=this_block%jb,this_block%je
             do i=this_block%ib,this_block%ie
+
               
                if ( k < km ) then
 
