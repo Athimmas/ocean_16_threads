@@ -64,9 +64,11 @@
 
 ! !PUBLIC VARIABLES
 
+  integer :: ib,jb,ie,je
+
 !variables for horizontal_mix
 
-   real (POP_r8), dimension(nx_block_unified,ny_block_unified,nt,km,max_blocks_clinic) :: &
+   real (POP_r8), dimension(nx_block_unified,ny_block_unified,nt,km,1) :: &
       TDTK,HDTK_BUF      ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    !dir$ attributes offload:mic :: RX_UNIFIED
@@ -415,6 +417,11 @@
       this_block           ! block information for current block
 
 
+   ib = 3
+   ie = nx_block_unified - 2
+   jb = 3
+   je = ny_block_unified - 2
+
    if( .not. allocated (HXY_UNIFIED)) then
 
    print *,"Intializing unified grids"
@@ -712,11 +719,11 @@
                     
       endif
 
-     !if(nsteps_total == 6 .and. k == 1 .and. my_task == master_task) then
+     if(nsteps_total == 1 .and. k == 45 .and. my_task == master_task) then
 
-      !print *,"changed cont HDTK is ",HDTK_BUF(3,7,1,1)
+      print *,"changed cont HDTK is ",HDTK_BUF(45,10,1,45,1)
 
-      !endif
+     endif
 
       !start_time = omp_get_wtime()  
       HDTK = HDTK_BUF(:,:,:,k,bid)
@@ -753,11 +760,11 @@
         endif
         HDTK=HDTK+TDTK(:,:,:,k,bid)
    
-     !if( nsteps_total == 6 .and. k == 1 .and. my_task == master_task) then
+     if( nsteps_total == 1 .and. k == 45 .and. my_task == master_task) then
 
-      !print *,"changed cont TDTK is ",TDTK(3,7,1,1)
+      print *,"changed cont TDTK is ",TDTK(45,10,1,45,1)
 
-      !endif
+      endif
 
 
 
@@ -1699,8 +1706,8 @@
 
 
      !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
-     do j=this_block%jb,this_block%je
-       do i=this_block%ib,this_block%ie
+     do j=jb,je
+       do i=ib,ie
 
 
          if ( k < KMT_UNIFIED(i,j,bid)  .and.  ( zw_unified(k) < max( ML_DEPTH(i,j),  &
@@ -1863,8 +1870,8 @@
  
 
 
-        do j=this_block%jb,this_block%je
-            do i=this_block%ib,this_block%ie
+        do j=jb,je
+            do i=ib,ie
 
               
                if ( k < km ) then
@@ -2808,8 +2815,8 @@
 
 !pw loop split to improve performance  -- 2
 
-            do j=this_block%jb,this_block%je
-              do i=this_block%ib,this_block%ie
+            do j=jb,je
+              do i=ib,ie
 
                 WORK3(i,j) = WORK3(i,j)                               &
                     + ( dz_unified(k) * KAPPA_ISOP_UNIFIED(i,j,kbt,k,bid)             &
@@ -2826,8 +2833,8 @@
              enddo
 
 
-            do j=this_block%jb,this_block%je
-              do i=this_block%ib,this_block%ie
+            do j=jb,je
+              do i=ib,ie
 
                 WORK3(i,j) = WORK3(i,j)                               &
                     + ( SF_SLX_UNIFIED(i  ,j  ,ieast ,kbt,k  ,bid)            &
@@ -2842,8 +2849,8 @@
                enddo
              enddo
 
-            do j=this_block%jb,this_block%je
-              do i=this_block%ib,this_block%ie
+            do j=jb,je
+              do i=ib,ie
 
                  WORK3(i,j) = WORK3(i,j)                              &
                     + ( factor                                        &
@@ -2859,8 +2866,8 @@
                enddo
              enddo
 
-           do j=this_block%jb,this_block%je
-              do i=this_block%ib,this_block%ie
+           do j=jb,je
+              do i=ib,ie
 
                 WORK3(i,j) = WORK3(i,j)                               &
                     + ( dz_bottom * KAPPA_ISOP_UNIFIED(i,j,ktp,kp1,bid)       &
@@ -2876,8 +2883,8 @@
                enddo
              enddo
 
-           do j=this_block%jb,this_block%je
-              do i=this_block%ib,this_block%ie
+           do j=jb,je
+              do i=ib,ie
 
 
                if(k ==1) then
@@ -2943,20 +2950,31 @@
               fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
 
-            !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 .and. n == 1)then
+            if(my_task == master_task .and. nsteps_total == 1 .and. k == 45 .and. i == 45 .and. j == 10 .and. n == 1)then
 
-                   !print *,"changed 1 at GTK write is"
-                   !print *,"FX(i,j,n)",FX(i,j,n)
-                   !print *,"FX(i-1,j,n)",FX(i-1,j,n)
-                   !print *,"FY(i,j,n)", FY(i,j,n)
-                   !print *,"FY(i,j-1,n)",FY(i,j-1,n)
+                   print *,"changed 1 at GTK write is"
+                   print *,"FX(i,j,n)",FX(i,j,n)
+                   print *,"FX(i-1,j,n)",FX(i-1,j,n)
+                   print *,"FY(i,j,n)", FY(i,j,n)
+                   print *,"FY(i,j-1,n)",FY(i,j-1,n)
+                   print *,"fzprev",fzprev
+                   print *,"fz",fz
+                   print *,"dzr_unified(k)",dzr_unified(k)
+                   print *,"TAREA_R_UNIFIED(i,j,bid)",TAREA_R_UNIFIED(i,j,bid) 
 
-              !endif
+              endif
 
 
               GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &               !done
                            + FY(i,j,n) - FY(i,j-1,n)  &
                       + fzprev - fz )*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)   
+
+             if(my_task == master_task .and. nsteps_total == 1 .and. k == 45 .and. i == 45 .and. j == 10 .and. n == 1)then
+
+                   print *,"GTK is",GTK(i,j,n)
+
+              endif
+
 
                enddo
             enddo 
@@ -2965,8 +2983,8 @@
 
        else ! k = km
 
-           do j=this_block%jb,this_block%je
-            do i=this_block%ib,this_block%ie
+           do j=jb,je
+            do i=ib,ie
 
                 WORK3prev = c0
 

@@ -112,6 +112,8 @@
   real (r8), dimension(:,:,:,:,:),public,allocatable :: &
       WORKN_PHI_TEMP2
 
+  
+
 
 !EOP
 !BOC
@@ -592,7 +594,7 @@
       this_block = get_block(blocks_clinic(iblock),iblock)
        do k=1,km
         do n=1,nt
-           call merger(TRACER (:,:,k,n,curtime,iblock) , TCUR_UNIFIED(:,:,k,n,1) , iblock ,this_block)
+           call merger(TRACER (:,:,k,n,mixtime,iblock) , TCUR_UNIFIED(:,:,k,n,1) , iblock ,this_block)
         enddo
        enddo
      enddo
@@ -601,8 +603,8 @@
       do iblock = 1,nblocks_clinic
       this_block = get_block(blocks_clinic(iblock),iblock)
        do k=1,km
-          call merger(UVEL(:,:,k,curtime,iblock) , UCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
-          call merger(VVEL(:,:,k,curtime,iblock) , VCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
+          call merger(UVEL(:,:,k,mixtime,iblock) , UCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
+          call merger(VVEL(:,:,k,mixtime,iblock) , VCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
        enddo
       enddo
 
@@ -652,19 +654,19 @@
 
    !endif
 
-   do iblock = 1,nblocks_clinic
-   this_block = get_block(blocks_clinic(iblock),iblock)
+   !do iblock = 1,nblocks_clinic
+   !this_block = get_block(blocks_clinic(iblock),iblock)
 
-   do kk=1,km
-   call splitter( VDC_GM(:,:,kk,iblock), VDC_GM_UNIFIED(:,:,kk,1), iblock, this_block )
-   enddo
+   !do kk=1,km
+   !call splitter ( VDC_GM(:,:,kk,iblock), VDC_GM_UNIFIED(:,:,kk,1), iblock, this_block )
+   !enddo
 
-   do kk=0,km+1
-    do temp=1,2
-     call merger( VDC(:,:,kk,temp,iblock), VDC_UNIFIED(:,:,kk,temp,1),iblock ,this_block )
-    enddo
-   enddo
-  enddo
+   !do kk=0,km+1
+    !do temp=1,2
+     !call splitter ( VDC(:,:,kk,temp,iblock), VDC_UNIFIED(:,:,kk,temp,1),iblock ,this_block )
+    !enddo
+   !enddo
+  !enddo
 
 
 
@@ -1876,6 +1878,15 @@
 
    !$omp barrier
 
+   !if(nsteps_total == 1 .and. bid == 1 .and. my_task == master_task ) then
+
+   !print *,"inputs changed are ",TCUR_UNIFIED(45,10,45,1,bid),UCUR_UNIFIED(45,10,45,bid),VCUR_UNIFIED(45,10,45,bid)
+
+   !print *,"values are", WORKN_PHI_TEMP2(5,10,1,k,bid),WORKN(5,10,1),k
+
+   !endif
+
+
    if(bid == 1) then
    !start_time = omp_get_wtime()
    do kk=1,km
@@ -1927,9 +1938,13 @@
    call splitter(WORKN(:,:,n),WORKN_PHI_TEMP(:,:,n,k,1),bid,this_block)
    enddo
 
-   if(nsteps_total == 6 .and. bid == 1  .and. my_task == master_task) then
+   !$omp barrier   
+
+   if(nsteps_total == 1 .and. bid == 2 .and. my_task == master_task .and. k == 45 ) then
  
-   print *,"values are", WORKN_PHI_TEMP2(39,42,1,k,bid),WORKN(39,42,1),k 
+   print *,"inputs are ",TMIX(5,10,k,1),UMIX(5,10,k),UMIX(5,10,k)
+
+   print *,"values are", WORKN_PHI_TEMP2(5,10,1,k,bid),WORKN(5,10,1),k 
 
    endif
 

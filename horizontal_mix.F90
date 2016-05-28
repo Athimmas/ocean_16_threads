@@ -529,7 +529,7 @@
 
    real (POP_r8), dimension(nx_block,ny_block) :: &
      WORK                 ! temporary to hold tavg field
-   real (POP_r8), dimension(nx_block,ny_block,nt,km),save :: &
+   real (POP_r8), dimension(nx_block,ny_block,nt,km) :: &
       TDTK,HDTK_BUF       ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    real (POP_r8) :: &
@@ -582,11 +582,11 @@
 
        endif
 
-      !if( nsteps_total == 6 .and. k == 1 .and. my_task == master_task) then
+      if( nsteps_total == 1 .and. k == 45 .and. my_task == master_task .and. bid == 2) then
 
-      !print *,"org cont HDTK is ",HDTK_BUF(3,7,1,1)  
+      print *,"org cont HDTK is ",HDTK_BUF(5,10,1,k) 
 
-      !endif
+      endif
 
          !end_time = omp_get_wtime()
 
@@ -640,11 +640,11 @@
 
    endif
    
-       !if(nsteps_total == 6 .and. k == 1 .and. my_task == master_task ) then
+       if(nsteps_total == 1 .and. k == 45 .and. my_task == master_task .and. bid == 2) then
 
-         !print *,"org cont TDTK is ",TDTK(3,7,1,1) 
+         print *,"org cont TDTK is ",TDTK(5,10,1,k) 
 
-      !endif
+      endif
  
  
    
