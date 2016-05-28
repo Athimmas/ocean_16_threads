@@ -66,7 +66,7 @@
 
 !variables for horizontal_mix
 
-   real (POP_r8), dimension(nx_block,ny_block,nt,km,max_blocks_clinic) :: &
+   real (POP_r8), dimension(nx_block_unified,ny_block_unified,nt,km,max_blocks_clinic) :: &
       TDTK,HDTK_BUF      ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    !dir$ attributes offload:mic :: RX_UNIFIED
@@ -293,7 +293,7 @@
          slm_b_unified                  ! max. slope allowed for bolus transport
 
       type tlt_info_unified
-        real (r8), dimension(nx_block,ny_block,max_blocks_clinic) :: &
+        real (r8), dimension(nx_block_unified,ny_block_unified,1) :: &
            DIABATIC_DEPTH,  &   ! depth of the diabatic region at the
                                 !  surface, i.e. mean mixed or boundary layer
                                 !  depth
@@ -302,7 +302,7 @@
                                 !  region starts, i.e.
                                 !   = TLT%DIABATIC_DEPTH + TLT%THICKNESS
         integer (int_kind), &
-              dimension(nx_block,ny_block,max_blocks_clinic) :: &
+              dimension(nx_block_unified,ny_block_unified,1) :: &
            K_LEVEL,  &          ! k level at or below which the interior,
                                 !  adiabatic region starts
            ZTW                  ! designates if the interior region
@@ -638,10 +638,10 @@
 
    integer (POP_i4), intent(in) :: k   ! depth level index
 
-   real (POP_r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+   real (POP_r8), dimension(nx_block_unified,ny_block_unified,km,nt), intent(in) :: &
       TMIX     ! tracers at mix time level
 
-   real (POP_r8), dimension(nx_block,ny_block,km), intent(in) :: &
+   real (POP_r8), dimension(nx_block_unified,ny_block_unified,km), intent(in) :: &
       UMIX, VMIX   ! U,V velocities at mix time level
 
    type (block), intent(in) :: &
@@ -649,7 +649,7 @@
 
 ! !OUTPUT PARAMETERS:
 
-   real (POP_r8), dimension(nx_block,ny_block,nt), intent(out) :: &
+   real (POP_r8), dimension(nx_block_unified,ny_block_unified,nt), intent(out) :: &
       HDTK                ! Hdiff(T) for nth tracer at level k
 
 !EOP
@@ -663,7 +663,7 @@
    integer (POP_i4) :: &
       bid,kk              ! local block id
 
-   real (POP_r8), dimension(nx_block,ny_block) :: &
+   real (POP_r8), dimension(nx_block_unified,ny_block_unified) :: &
      WORK                 ! temporary to hold tavg field
 
    real (POP_r8) :: &
@@ -775,7 +775,7 @@
 ! !INPUT PARAMETERS:
 
 
-      real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,km,nt), intent(in) :: &
          TMIX                  ! tracers at all vertical levels
                                !   at mixing time level
       type (block), intent(in) :: &
@@ -799,16 +799,16 @@
       !real (r8), dimension(nx_block,ny_block) :: &
       !   KMASKE, KMASKN    ! ocean mask
         !DRDT, DRDS              ! expansion coefficients d(rho)/dT,S
-      real (r8), dimension(nx_block,ny_block,2) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,2) :: &
          TXP, TYP, TZP , TEMP
 
-      real (r8), dimension(nx_block,ny_block) :: & 
+      real (r8), dimension(nx_block_unified,ny_block_unified) :: & 
          RZ                  ! Dz(rho)
       integer (int_kind), parameter :: &
          ktp = 1, kbt = 2     ! refer to the top and bottom halves of a 
                               ! grid cell, respectively
 
-      real (r8), dimension(nx_block,ny_block,km) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,km) :: &
          DRDT, DRDS                ! expansion coefficients d(rho)/dT,S
 
       real (r8) :: tempi,tempip1,tempj,tempjp1
@@ -868,7 +868,7 @@
 
             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,KMASKE,KMASKN,tempi,tempip1,tempj,tempjp1)num_threads(60)
             do j=1,ny_block
-              do i=1,nx_block
+              do i=1,nx_block_unified
 
 
 !-----------------------------------------------------------------------
@@ -889,14 +889,14 @@
                 endif
                 TEMP(i,j,kn) = max(-c2, TMIX(i,j,kk,1))
 
-                if(i <= nx_block-1) then 
+                if(i <= nx_block_unified-1) then 
                  tempi = max(-c2, TMIX(i,j,kk,1))
                  tempip1 = max(-c2, TMIX(i+1,j,kk,1))
                  TXP(i,j,kn) = KMASKE * (tempip1  &
                                             -tempi)
                  endif 
 
-                if(j <= ny_block-1)then
+                if(j <= ny_block_unified-1)then
                  tempjp1 = max(-c2, TMIX(i,j+1,kk,1))
                  tempj = max(-c2, TMIX(i,j,kk,1))                
                  TYP(i,j,kn) = KMASKN * (tempjp1  &
@@ -904,12 +904,12 @@
                 endif   
 
                 do n=1,nt
-                  if(i <= nx_block-1)&
+                  if(i <= nx_block_unified-1)&
                   TX_UNIFIED(i,j,kk,n,bid) = KMASKE  &
                               * (TMIX(i+1,j,kk,n) - TMIX(i,j,kk,n))
 
 
-                   if(j <= ny_block-1)& 
+                   if(j <= ny_block_unified-1)& 
                        TY_UNIFIED(i,j,kk,n,bid) = KMASKN  &
                               * (TMIX(i,j+1,kk,n) - TMIX(i,j,kk,n))
                 enddo
@@ -948,8 +948,8 @@
 
             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,temp_ksi,temp_ksip1,temp_ksj,temp_ksjp1,kmask,kmaske,kmaskn,temp_ksim1,kmaskeim1) &
             !!$OMP PRIVATE(txpim1,txim1,temp_ksjm1,kmasknjm1,typjm1,tyjm1)NUM_THREADS(60)
-            do j=1,ny_block
-              do i=1,nx_block
+            do j=1,ny_block_unified
+              do i=1,nx_block_unified
                  KMASK = merge(c1, c0, kk < KMT_unified(i,j,bid))
 
 
@@ -1014,24 +1014,24 @@
                  temp_ksjp1 = max(-c2, TMIX(i,j+1,kk+1,1))
                  
 
-                 if(i <= nx_block-1)then
+                 if(i <= nx_block_unified-1)then
 
                   TXP(i,j,ks) = KMASKE*(temp_ksip1  &
                                                - temp_ksi) 
                  endif 
 
-                 if(j <= ny_block-1)then
+                 if(j <= ny_block_unified-1)then
                   TYP(i,j,ks) = KMASKN*(temp_ksjp1  &
                                             - temp_ksj)
                  
                  endif 
 
                  do n=1,nt
-                  if(i <= nx_block-1)&
+                  if(i <= nx_block_unified-1)&
                   TX_UNIFIED(i,j,kk+1,n,bid) = KMASKE  &
                             * (TMIX(i+1,j,kk+1,n) - TMIX(i,j,kk+1,n))
 
-                  if(j <= ny_block-1)&
+                  if(j <= ny_block_unified-1)&
                   TY_UNIFIED(i,j,kk+1,n,bid) = KMASKN  &
                             * (TMIX(i,j+1,kk+1,n) - TMIX(i,j,kk+1,n))
                  enddo
@@ -1122,8 +1122,8 @@
           do n=3,nt 
            !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk,n,j,i)collapse(3)num_threads(60)
            do kk=1,km-1
-             do j=1,ny_block
-                do i=1,nx_block
+             do j=1,ny_block_unified
+                do i=1,nx_block_unified
                    TZ_UNIFIED(i,j,kk+1,n,bid) = TMIX(i,j,kk  ,n) - TMIX(i,j,kk+1,n)
                 enddo
              enddo
@@ -1174,7 +1174,7 @@
       kk                     ! level to which water is adiabatically 
                             ! displaced
 
-   real (r8), dimension(nx_block,ny_block), intent(in) :: & 
+   real (r8), dimension(nx_block_unified,ny_block_unified), intent(in) :: & 
       TEMPK,             &! temperature at level k
       SALTK               ! salinity    at level k
 
@@ -1183,7 +1183,7 @@
 
 ! !OUTPUT PARAMETERS:
 
-   real (r8), dimension(nx_block,ny_block), optional, intent(out) :: & 
+   real (r8), dimension(nx_block_unified,ny_block_unified), optional, intent(out) :: & 
       RHOOUT,  &! perturbation density of water
       RHOFULL, &! full density of water
       DRHODT,  &! derivative of density with respect to temperature
@@ -1202,7 +1202,7 @@
       bid,               &! local block index
       out_of_range        ! counter for out-of-range T,S values
 
-   real (r8), dimension(nx_block,ny_block) :: &
+   real (r8), dimension(nx_block_unified,ny_block_unified) :: &
       TQ,SQ,             &! adjusted T,S
       BULK_MOD,          &! Bulk modulus
       RHO_S,             &! density at the surface
@@ -1347,7 +1347,7 @@
    type (block), intent(in) :: &
       this_block            ! block info for this sub block
 
-   real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+   real (r8), dimension(nx_block_unified,ny_block_unified,km,nt), intent(in) :: &
       TMIX                  ! tracers at all vertical levels
                             !   at mixing time level
 !EOP
@@ -1363,7 +1363,7 @@
       kp1,               &
       bid,temp              ! local block address for this sub block
 
-   real (r8), dimension(nx_block,ny_block) :: &
+   real (r8), dimension(nx_block_unified,ny_block_unified) :: &
       ML_DEPTH,          &  ! mixed layer depth
       HLS,               &  ! horizontal length scale
       WORK1, WORK2,      &  ! work arrays
@@ -1377,10 +1377,10 @@
    real (r8), dimension(2) :: &
       reference_depth
 
-   logical (log_kind), dimension(nx_block,ny_block) :: &
+   logical (log_kind), dimension(nx_block_unified,ny_block_unified) :: &
       CONTINUE_INTEGRAL     ! flag
 
-   real (r8), dimension(nx_block,ny_block,2) :: &
+   real (r8), dimension(nx_block_unified,ny_block_unified,2) :: &
       BX_VERT_AVG,       &  ! horizontal buoyancy differences vertically 
       BY_VERT_AVG           !  averaged within the mixed layer   
 
@@ -1421,8 +1421,8 @@
      do k=1,km
         do kk=1,2
            do temp=1,2
-              do j=1,ny_block
-                 do i=1,nx_block
+              do j=1,ny_block_unified
+                 do i=1,nx_block_unified
 
                     SF_SUBM_X_unified(i,j,temp,kk,k,bid) = c0
                     SF_SUBM_Y_unified(i,j,temp,kk,k,bid) = c0
@@ -1438,8 +1438,8 @@
    ML_DEPTH(:,:) = HMXL_UNIFIED(:,:,bid) 
    
 
-   do j=1,ny_block
-      do i=1,nx_block
+   do j=1,ny_block_unified
+      do i=1,nx_block_unified
           CONTINUE_INTEGRAL(i,j) = .true.
           if( KMT_UNIFIED(i,j,bid) == 0 ) then
            CONTINUE_INTEGRAL(i,j) = .false.
@@ -1460,8 +1460,8 @@
      if ( k > 1 )  zw_top = zw_unified(k-1)
 
     !!$OMP PARALLEL DO SHARED(CONTINUE_INTEGRAL,BX_VERT_AVG,RX_UNIFIED,RY_UNIFIED,ML_DEPTH)PRIVATE(i,WORK3)num_threads(60)SCHEDULE(dynamic,16)
-    do j=1,ny_block
-        do i=1,nx_block
+    do j=1,ny_block_unified
+        do i=1,nx_block_unified
 
             WORK3(i,j)=c0
             if( CONTINUE_INTEGRAL(i,j)  .and.  ML_DEPTH(i,j) > zw_unified(k) )then
@@ -1501,8 +1501,8 @@
    endif
 #endif
 
-    do j=1,ny_block
-        do i=1,nx_block
+    do j=1,ny_block_unified
+        do i=1,nx_block_unified
 
            if ( KMT_UNIFIED(i,j,bid) > 0 ) then
            BX_VERT_AVG(i,j,1) = - grav * BX_VERT_AVG(i,j,1) / ML_DEPTH(i,j)
@@ -1516,8 +1516,8 @@
 
 !!!! if lsubmeso_scaling  false!!!!!!!
 
-    do j=1,ny_block
-        do i=1,nx_block
+    do j=1,ny_block_unified
+        do i=1,nx_block_unified
  
            WORK1(i,j)=c0
  
@@ -1545,8 +1545,8 @@
           
      do k=2,km
         !!$OMP PARALLEL DO SHARED(WORK3,CONTINUE_INTEGRAL,WORK2,k,bid,dzw_unified,zt_unified,dzwr_unified,RZ_SAVE_UNIFIED,ML_DEPTH)PRIVATE(i,j)DEFAULT(NONE)num_threads(60)
-        do j=1,ny_block
-           do i=1,nx_block
+        do j=1,ny_block_unified
+           do i=1,nx_block_unified
 
               WORK3(i,j) = c0
               if ( CONTINUE_INTEGRAL(i,j)  .and.  ML_DEPTH(i,j) > zt_unified(k) ) then
@@ -1578,8 +1578,8 @@
      endif
 #endif
 
-       do j=1,ny_block
-           do i=1,nx_block
+       do j=1,ny_block_unified
+           do i=1,nx_block_unified
 
              if ( KMT_unified(i,j,bid) > 0 ) then
 
@@ -1601,8 +1601,8 @@
 
        !!$OMP PARALLEL DO DEFAULT(NONE)PRIVATE(i,j)SHARED(reference_depth,ML_DEPTH,KMT,WORK3,WORK2,WORK1,TIME_SCALE_UNIFIED,HLS,SF_SUBM_X_UNIFIED,SF_SUBM_Y_UNIFIED) &
        !!$OMP SHARED(BX_VERT_AVG,BY_VERT_AVG,DXT_UNIFIED,DYT_UNIFIED,max_hor_grid_scale_unified,efficiency_factor_unified,kk,k,bid)num_threads(60)  
-       do j=1,ny_block
-           do i=1,nx_block
+       do j=1,ny_block_unified
+           do i=1,nx_block_unified
 
 
                if ( reference_depth(kk) < ML_DEPTH(i,j)  .and.  &
@@ -1661,10 +1661,10 @@
      endif
 
      !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
-     do j=1,ny_block
-       do i=1,nx_block
+     do j=1,ny_block_unified
+       do i=1,nx_block_unified
 
-         if(j<=ny_block-1 .and. i<=nx_block-1) then
+         if(j<=ny_block_unified-1 .and. i<=nx_block_unified-1) then
 
          WORK1(i,j) = (   SF_SUBM_X_UNIFIED(i  ,j,1,kbt,k,  bid)    &
                + factor * SF_SUBM_X_UNIFIED(i  ,j,1,ktp,kp1,bid)    &
@@ -1740,7 +1740,7 @@
    type (block), intent(in) :: &
       this_block            ! block info for this sub block
    
-   real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+   real (r8), dimension(nx_block_unified,ny_block_unified,km,nt), intent(in) :: &
          TMIX                  ! tracers at all vertical levels
                                !   at mixing time level   
 
@@ -1751,7 +1751,7 @@
    
 ! !OUTPUT PARAMETERS:
 
-    real (r8), dimension(nx_block,ny_block,nt), intent(out) :: &
+    real (r8), dimension(nx_block_unified,ny_block_unified,nt), intent(out) :: &
          GTK     ! submesoscale tracer flux at level k
       
 !-----------------------------------------------------------------------
@@ -1776,7 +1776,7 @@
          WORK1, WORK2,            &! local work space
          KMASK                     ! ocean mask
          
-      real (r8), dimension(nx_block,ny_block,nt)  :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,nt)  :: &
          FX, FY                    ! fluxes across east, north faces
 
       logical :: reg_match_init_gm
@@ -1804,10 +1804,10 @@
       endif
 
       do n = 1,nt
-          do j=1,ny_block
-            do i=1,nx_block
+          do j=1,ny_block_unified
+            do i=1,nx_block_unified
 
-              if(i <= nx_block-1 ) then
+              if(i <= nx_block_unified-1 ) then
 
             !if(my_task == master_task .and. nsteps_total == 3 .and. k == 45 .and. i == 45 - 1 .and. j == 45 .and. n == 1)then
 
@@ -1833,7 +1833,7 @@
 
               endif  
 
-              if(j <= ny_block -1 )then
+              if(j <= ny_block_unified -1 )then
 
               FY(i,j,n) =  CY(i,j)                          &
                * ( SF_SUBM_Y_UNIFIED(i,j  ,jnorth,ktp,k,bid) * TZ_UNIFIED(i,j,k,n,bid)                      &
@@ -2049,11 +2049,11 @@
 
       integer (int_kind), intent(in) :: k  ! depth level index
 
-      real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,km,nt), intent(in) :: &
          TMIX                  ! tracers at all vertical levels
                                !   at mixing time level
 
-      real (r8), dimension(nx_block,ny_block,km), intent(in) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,km), intent(in) :: &
          UMIX, VMIX            ! U,V  at all vertical levels
                                !   at mixing time level
 
@@ -2067,7 +2067,7 @@
 
 ! !OUTPUT PARAMETERS:
 
-      real (r8), dimension(nx_block,ny_block,nt), intent(out) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,nt), intent(out) :: &
          GTK     ! diffusion+bolus advection for nth tracer at level k
 
 !EOP
@@ -2170,8 +2170,8 @@
           !!$OMP DEFAULT(SHARED)PRIVATE(kid,i,j,kk_sub,kk)NUM_THREADS(60)COLLAPSE(3)
           do kk=1,km
             do kk_sub = ktp,kbt
-                  do j=1,ny_block
-                     do i=1,nx_block
+                  do j=1,ny_block_unified
+                     do i=1,nx_block_unified
 
                         kid = kk + kk_sub - 2
 
@@ -2241,8 +2241,8 @@
           !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)
           do kk_sub=ktp,kbt
             do kk=1,km
-               do j=1,ny_block
-                   do i=1,nx_block
+               do j=1,ny_block_unified
+                   do i=1,nx_block_unified
                        KAPPA_ISOP_UNIFIED(i,j,kk_sub,kk,bid) =  KAPPA_LATERAL_UNIFIED(i,j,bid) &
                                                      *  KAPPA_VERTICAL_UNIFIED(i,j,kk,bid)
                    enddo
@@ -2254,8 +2254,8 @@
           !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)collapse(3)schedule(dynamic,4)
            do kk_sub=ktp,kbt
             do kk=1,km
-             do j=1,ny_block
-              do i=1,nx_block
+             do j=1,ny_block_unified
+              do i=1,nx_block_unified
                  KAPPA_THIC_UNIFIED(i,j,kk_sub,kk,bid) =  ah_bolus  &
                                           * KAPPA_VERTICAL_UNIFIED(i,j,kk,bid)
               enddo
@@ -2286,8 +2286,8 @@
              kid = kk + kk_sub - 2
 
              !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,dzw,dz_bottom,zt)NUM_THREADS(60)
-             do j=1,ny_block
-                   do i=1,nx_block
+             do j=1,ny_block_unified
+                   do i=1,nx_block_unified
 
                        if ( transition_layer_on ) then
                           SLA(i,j) = SLA_SAVE_UNIFIED(i,j,kk_sub,kk,bid)
@@ -2494,8 +2494,8 @@
 
             enddo !kk_sub loop
 
-           do j=1,ny_block
-                   do i=1,nx_block
+           do j=1,ny_block_unified
+                   do i=1,nx_block_unified
 
                        if (kk == KMT_UNIFIED(i,j,bid)) then
                           KAPPA_ISOP_UNIFIED(i,j,kbt,kk,bid) = c0
@@ -2540,8 +2540,8 @@
 
      if ( k < km ) then
 
-      do j=1,ny_block
-         do i=1,nx_block
+      do j=1,ny_block_unified
+         do i=1,nx_block_unified
 
          WORK1(i,j) = dzw_unified(k)*KMASK(i,j)*TAREA_R_UNIFIED(i,j,bid)*      &
                  (dz_unified(k)*p25*KAPPA_ISOP_UNIFIED(i,j,kbt,k,  bid)*      &
@@ -2569,8 +2569,8 @@
 
      if ( ah_bkg_bottom /= c0 ) then
 
-         do j=1,ny_block
-            do i=1,nx_block
+         do j=1,ny_block_unified
+            do i=1,nx_block_unified
 
              if( k == KMT_UNIFIED(i,j,bid)) then
                   HOR_DIFF_UNIFIED(i,j,kbt,k,bid) = ah_bkg_bottom
@@ -2583,8 +2583,8 @@
 
      n = 1
 
-     do j=1,ny_block
-        do i=1,nx_block-1
+     do j=1,ny_block_unified
+        do i=1,nx_block_unified-1
 
 
 
@@ -2610,8 +2610,8 @@
         enddo
       enddo
 
-      do j=1,ny_block-1
-        do i=1,nx_block
+      do j=1,ny_block_unified-1
+        do i=1,nx_block_unified
           WORK4(i,j) = KAPPA_ISOP_UNIFIED(i,j,  ktp,k,bid)  &
                      + HOR_DIFF_UNIFIED  (i,j,  ktp,k,bid)  &
                      + KAPPA_ISOP_UNIFIED(i,j,  kbt,k,bid)  &
@@ -2668,8 +2668,8 @@
 
       if ( .not. cancellation_occurs ) then
 
-        do j=1,ny_block
-          do i=1,nx_block-1
+        do j=1,ny_block_unified
+          do i=1,nx_block_unified-1
 
            !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 )then
 
@@ -2701,8 +2701,8 @@
         enddo
 
         do n = 1,nt
-          do j=1,ny_block
-            do i=1,nx_block-1
+          do j=1,ny_block_unified
+            do i=1,nx_block_unified-1
 
 
             !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 .and. n == 1)then
@@ -2732,8 +2732,8 @@
           enddo
         end do
 
-        do j=1,ny_block-1
-          do i=1,nx_block
+        do j=1,ny_block_unified-1
+          do i=1,nx_block_unified
             WORK1(i,j) = KAPPA_ISOP_UNIFIED(i,j,ktp,k,bid)                     &
                          * SLY_UNIFIED(i,j,jnorth,ktp,k,bid) * dz_unified(k)   &
                          - SF_SLY_UNIFIED(i,j,jnorth,ktp,k,bid)
@@ -2751,8 +2751,8 @@
 
        do n = 1,nt
 
-          do j=1,ny_block-1
-            do i=1,nx_block
+          do j=1,ny_block_unified-1
+            do i=1,nx_block_unified
 
 
              !if(my_task == master_task .and. nsteps_total == 6 .and. k == 1 .and. i == 3 .and. j == 7 .and. n == 1)then
@@ -3068,15 +3068,15 @@
 
 ! !INPUT/OUTPUT PARAMETERS:
 
-   real (r8), dimension(nx_block,ny_block), optional, intent(inout) :: &
+   real (r8), dimension(nx_block_unified,ny_block_unified), optional, intent(inout) :: &
       HBLT                   ! boundary layer depth
 
-   integer (int_kind), dimension(nx_block,ny_block), optional, intent(inout) :: &
+   integer (int_kind), dimension(nx_block_unified,ny_block_unified), optional, intent(inout) :: &
       KBL                    ! index of first lvl below hbl
 
 ! !OUTPUT PARAMETERS:
 
-   real (r8), dimension(nx_block,ny_block), optional, intent(out) ::  &
+   real (r8), dimension(nx_block_unified,ny_block_unified), optional, intent(out) ::  &
       SMOOTH_OUT              ! optional output array containing the
                               !  smoothened field if overwrite_hblt is false
 
@@ -3094,7 +3094,7 @@
       i, j,              &  ! horizontal loop indices
       k                     ! vertical level index
 
-   real (r8), dimension(nx_block,ny_block) ::  &
+   real (r8), dimension(nx_block_unified,ny_block_unified) ::  &
       WORK1, WORK2
 
    real (r8) ::  &
@@ -3152,7 +3152,7 @@
    WORK1 = WORK2
 
    do j=2,ny_block-1
-     do i=2,nx_block-1
+     do i=2,nx_block_unified-1
        if ( KMT_UNIFIED(i,j,bid) /= 0 ) then
          cw = p125
          ce = p125
@@ -3187,8 +3187,8 @@
 
    do k=1,km
      !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(ztmp,j,i)NUM_THREADS(60)
-     do j=2,ny_block-1
-       do i=2,nx_block-1
+     do j=2,ny_block_unified-1
+       do i=2,nx_block_unified-1
 
            ztmp = -zgrid_unified(k)
 
@@ -3206,8 +3206,8 @@
      HBLT = WORK2
 
      do k=1,km
-       do j=2,ny_block-1
-         do i=2,nx_block-1
+       do j=2,ny_block_unified-1
+         do i=2,nx_block_unified-1
 
              ztmp = -zgrid_unified(k)
 
@@ -3258,14 +3258,14 @@
          k, kk,     &        ! loop indices
          bid,i,j             ! local block address for this sub block
 
-      integer (int_kind), dimension(nx_block,ny_block) :: &
+      integer (int_kind), dimension(nx_block_unified,ny_block_unified) :: &
          K_START,   &        ! work arrays for TLT%K_LEVEL and 
          K_SUB               !  TLT%ZTW, respectively
 
       logical (log_kind), dimension(nx_block_unified,ny_block_unified) :: &
          COMPUTE_TLT         ! flag
 
-      real (r8), dimension(nx_block,ny_block) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified) :: &
          WORK                ! work space for TLT%THICKNESS
 
       real (r8), dimension(2) :: &
@@ -3294,8 +3294,8 @@
       do k=1,km
 
               !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60) 
-              do j=1,ny_block
-                   do i=1,nx_block
+              do j=1,ny_block_unified
+                   do i=1,nx_block_unified
 
                       if ( COMPUTE_TLT(i,j)  .and.  &
                          TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid) < zw_unified(k) ) then
@@ -3338,8 +3338,8 @@
 #endif
 
              !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
-             do j=1,ny_block
-                   do i=1,nx_block
+             do j=1,ny_block_unified
+                   do i=1,nx_block_unified
 
                       if ( KMT_UNIFIED(i,j,bid) == 0  .or.  K_START(i,j) > KMT_UNIFIED(i,j,bid)  .or.  &
                       ( K_START(i,j) == KMT_UNIFIED(i,j,bid)  .and.  K_SUB(i,j) == kbt ) ) then
@@ -3355,8 +3355,8 @@
              do k=1,km-1
 
              !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
-             do j=1,ny_block
-                   do i=1,nx_block
+             do j=1,ny_block_unified
+                   do i=1,nx_block_unified
 
                      WORK(i,j) = c0
 
@@ -3398,8 +3398,8 @@
 
               !!$OMP PARALLEL DO
               !DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)SCHEDULE(DYNAMIC,16)
-              do j=1,ny_block
-                   do i=1,nx_block
+              do j=1,ny_block_unified
+                   do i=1,nx_block_unified
                       if (kk == ktp) then
                    
                          WORK(i,j) = c0 
@@ -3445,8 +3445,8 @@
               enddo
           enddo
 
-             do j=1,ny_block
-                   do i=1,nx_block
+             do j=1,ny_block_unified
+                   do i=1,nx_block_unified
 
                        if ( COMPUTE_TLT(i,j)  .and.  K_START(i,j) == k ) then
                            K_START(i,j) = K_START(i,j) + 1
@@ -3467,8 +3467,8 @@
      do k=1,km
 
              !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
-             do j=1,ny_block
-                   do i=1,nx_block
+             do j=1,ny_block_unified
+                   do i=1,nx_block_unified
 
 
                       if ( TLT_UNIFIED%K_LEVEL(i,j,bid) == k  .and.  &
@@ -3489,8 +3489,8 @@
       enddo
 
              !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
-             do j=1,ny_block
-                   do i=1,nx_block
+             do j=1,ny_block_unified
+                   do i=1,nx_block_unified
 
 
                       COMPUTE_TLT(i,j) = .false.
@@ -3520,7 +3520,7 @@
 
 ! !INPUT PARAMETERS:
 
-      real (r8), dimension(nx_block,ny_block,km,nt), intent(in) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,km,nt), intent(in) :: &
          TMIX                  ! tracers at all vertical levels
                                !   at mixing time level
 
@@ -3542,7 +3542,7 @@
       integer (int_kind), dimension(nx_block_unified,ny_block_unified) :: &
          K_MIN                ! k index below SDL 
 
-      real (r8), dimension(nx_block,ny_block) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified) :: &
          TEMP_K,           &  ! temperature at level k
          TEMP_KP1,         &  ! temperature at level k+1
          RHOT,             &  ! dRHO/dT
@@ -3551,7 +3551,7 @@
                               !  of N^2
          SDL                  ! surface diabatic layer (see below)
 
-      real (r8), dimension(nx_block,ny_block,km) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,km) :: &
          BUOY_FREQ_SQ_NORM    ! normalized N^2 defined at level interfaces
 
 
@@ -3577,8 +3577,8 @@
                             this_block, DRHODT=RHOT, DRHODS=RHOS )
 
           !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60) 
-          do j=1,ny_block
-             do i=1,nx_block
+          do j=1,ny_block_unified
+             do i=1,nx_block_unified
 
                 if ( k == 1 ) TEMP_K(i,j) = max( -c2, TMIX(i,j,k,1) )
 
@@ -3601,8 +3601,8 @@
 
      do k=1,km-1
        !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
-       do j=1,ny_block
-        do i=1,nx_block
+       do j=1,ny_block_unified
+        do i=1,nx_block_unified
 
          if ( ( K_MIN(i,j) == km+1 ) .and. ( zw_unified(k) > SDL(i,j) ) .and.  &
                 ( k <= KMT_UNIFIED(i,j,bid) )  .and.                 &
@@ -3628,8 +3628,8 @@
 
       do k=1,km-1
        !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
-       do j=1,ny_block
-        do i=1,nx_block
+       do j=1,ny_block_unified
+        do i=1,nx_block_unified
 
         if ( k == KMT_UNIFIED(i,j,bid)-1 ) then
           BUOY_FREQ_SQ_NORM(i,j,k+1) = BUOY_FREQ_SQ_NORM(i,j,k)
@@ -3641,8 +3641,8 @@
 
       do k=2,km
        !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
-       do j=1,ny_block
-        do i=1,nx_block
+       do j=1,ny_block_unified
+        do i=1,nx_block_unified
 
          if ( ( k > K_MIN(i,j) ) .and. ( k <= KMT_UNIFIED(i,j,bid) ) ) then
           KAPPA_VERTICAL_UNIFIED(i,j,k,bid) = BUOY_FREQ_SQ_NORM(i,j,k-1)
@@ -3684,16 +3684,16 @@
          k, kk,     &        ! loop indices
          bid,i,j,temp        ! local block address for this sub block
  
-      real (r8), dimension(nx_block,ny_block,2) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified,2) :: &
          WORK1, WORK2, WORK3, WORK4   ! work arrays
 
-      real (r8), dimension(nx_block,ny_block) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified) :: &
          WORK2_NEXT, WORK4_NEXT       ! WORK2 or WORK4 at next level
 
-      real (r8), dimension(nx_block,ny_block) :: &
+      real (r8), dimension(nx_block_unified,ny_block_unified) :: &
          WORK5, WORK6, WORK7          ! more work arrays
 
-      logical (log_kind), dimension(nx_block,ny_block) :: &
+      logical (log_kind), dimension(nx_block_unified,ny_block_unified) :: &
          LMASK               ! flag
 
       real (r8), dimension(2) :: &
@@ -3718,10 +3718,10 @@
      do k=1,km
         do kk=1,2
            do temp=1,2 
-              do j=1,ny_block
+              do j=1,ny_block_unified
                  !!dir$ vector aligned
                  !!dir$ ivdep
-                 do i=1,nx_block
+                 do i=1,nx_block_unified
  
                     SF_SLX_UNIFIED(i,j,temp,kk,k,bid) = c0
                     SF_SLY_UNIFIED(i,j,temp,kk,k,bid) = c0
@@ -3770,8 +3770,8 @@
         do kk=1,2
  
           !!$OMP PARALLEL DO PRIVATE(I,J)DEFAULT(SHARED)NUM_THREADS(60) 
-          do j=1,ny_block
-           do i=1,nx_block
+          do j=1,ny_block_unified
+           do i=1,nx_block_unified
 
  
             LMASK(i,j) = TLT_UNIFIED%K_LEVEL(i,j,bid) == k  .and.            &
@@ -3939,8 +3939,8 @@
 !
 !-----------------------------------------------------------------------
 
-          do j=1,ny_block
-             do i=1,nx_block
+          do j=1,ny_block_unified
+             do i=1,nx_block_unified
 
                 WORK5(i,j) = c0
                 if (KMT_UNIFIED(i,j,bid) /= 0) then
@@ -3973,8 +3973,8 @@
 !
 !-----------------------------------------------------------------------
      
-          do j=1,ny_block
-             do i=1,nx_block
+          do j=1,ny_block_unified
+             do i=1,nx_block_unified
 
 
                 if ( reference_depth(kk) <= TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)  &
@@ -4182,8 +4182,8 @@
 !     diabatic region: no isopycnal diffusion 
 !
 !-----------------------------------------------------------------------
-           do j=1,ny_block
-              do i=1,nx_block
+           do j=1,ny_block_unified
+              do i=1,nx_block_unified
 
                  if ( reference_depth(kk) <= TLT_UNIFIED%DIABATIC_DEPTH(i,j,bid)  &
                  .and.  k <= KMT_UNIFIED(i,j,bid) ) then

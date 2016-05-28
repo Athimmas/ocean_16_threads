@@ -467,7 +467,7 @@
  allocate(TCUR_UNIFIED(nx_block_unified,ny_block_unified,km,nt,1))
  allocate(UCUR_UNIFIED(nx_block_unified,ny_block_unified,km,1))
  allocate(VCUR_UNIFIED(nx_block_unified,ny_block_unified,km,1)) 
- allocate(WORKN_PHI_TEMP(nx_block,ny_block,nt,km,nblocks_clinic))
+ allocate(WORKN_PHI_TEMP(nx_block_unified,ny_block_unified,nt,km,1))
  allocate(WORKN_PHI_TEMP2(nx_block,ny_block,nt,km,nblocks_clinic))
 
  end subroutine init_baroclinic
@@ -1843,19 +1843,21 @@
 !-----------------------------------------------------------------------
    
 
-   !$omp barrier
    if(k==1)then
 
-   !HMXL_UNIFIED = HMXL
-   !KPP_HBLT_UNIFIED = KPP_HBLT
+   call merger( HMXL(:,:,bid), HMXL_UNIFIED(:,:,1), bid , this_block)
+   call merger( KPP_HBLT(:,:,bid), KPP_HBLT_UNIFIED(:,:,1), bid , this_block)
+
    !VDC_UNIFIED = VDC
    !VDC_GM_UNIFIED = VDC_GM 
-   !!$omp barrier
+   !$omp barrier
 
+   if(bid == 1) then
    !start_time = omp_get_wtime()
-   !do kk=1,km
-   !call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
-   !enddo
+   do kk=1,km
+   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,bid), TCUR_UNIFIED(:,:,:,:,1), UCUR_UNIFIED(:,:,:,1), VCUR_UNIFIED(:,:,:,1), this_block)
+   enddo
+   endif
 
    !end_time = omp_get_wtime()
 
