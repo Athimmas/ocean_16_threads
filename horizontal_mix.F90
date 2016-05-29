@@ -582,11 +582,11 @@
 
        endif
 
-      if( nsteps_total == 1 .and. k == 45 .and. my_task == master_task .and. bid == 2) then
+      !if( nsteps_total == 1 .and. k == 45 .and. my_task == master_task .and. bid == 2) then
 
-      print *,"org cont HDTK is ",HDTK_BUF(5,10,1,k) 
+      !print *,"org cont HDTK is ",HDTK_BUF(5,10,1,k) 
 
-      endif
+      !endif
 
          !end_time = omp_get_wtime()
 
@@ -640,11 +640,11 @@
 
    endif
    
-       if(nsteps_total == 1 .and. k == 45 .and. my_task == master_task .and. bid == 2) then
+       !if(nsteps_total == 1 .and. k == 45 .and. my_task == master_task .and. bid == 2) then
 
-         print *,"org cont TDTK is ",TDTK(5,10,1,k) 
+         !print *,"org cont TDTK is ",TDTK(5,10,1,k) 
 
-      endif
+      !endif
  
  
    

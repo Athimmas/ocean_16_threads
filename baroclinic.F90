@@ -654,19 +654,19 @@
 
    !endif
 
-   !do iblock = 1,nblocks_clinic
-   !this_block = get_block(blocks_clinic(iblock),iblock)
+   do iblock = 1,nblocks_clinic
+   this_block = get_block(blocks_clinic(iblock),iblock)
 
-   !do kk=1,km
-   !call splitter ( VDC_GM(:,:,kk,iblock), VDC_GM_UNIFIED(:,:,kk,1), iblock, this_block )
-   !enddo
+   do kk=1,km
+   call splitter ( VDC_GM(:,:,kk,iblock), VDC_GM_UNIFIED(:,:,kk,1), iblock, this_block )
+   enddo
 
-   !do kk=0,km+1
-    !do temp=1,2
-     !call splitter ( VDC(:,:,kk,temp,iblock), VDC_UNIFIED(:,:,kk,temp,1),iblock ,this_block )
-    !enddo
-   !enddo
-  !enddo
+   do kk=0,km+1
+    do temp=1,2
+     call splitter ( VDC(:,:,kk,temp,iblock), VDC_UNIFIED(:,:,kk,temp,1),iblock ,this_block )
+    enddo
+   enddo
+  enddo
 
 
 
@@ -1938,15 +1938,23 @@
    call splitter(WORKN(:,:,n),WORKN_PHI_TEMP(:,:,n,k,1),bid,this_block)
    enddo
 
-   !$omp barrier   
-
-   if(nsteps_total == 1 .and. bid == 2 .and. my_task == master_task .and. k == 45 ) then
+   !if( bid == 1 .and. my_task == master_task ) then
  
-   print *,"inputs are ",TMIX(5,10,k,1),UMIX(5,10,k),UMIX(5,10,k)
+       !do n=1,nt
+         !do j=1,ny_block
+          !do i=1,nx_block
 
-   print *,"values are", WORKN_PHI_TEMP2(5,10,1,k,bid),WORKN(5,10,1),k 
+           !if( abs(WORKN(i,j,n) - WORKN_PHI_TEMP2(i,j,n,k,bid)) > 1e-10  ) then
 
-   endif
+              !print *,i,j,n,k,(WORKN(i,j,n) - WORKN_PHI_TEMP2(i,j,n,k,bid)),nsteps_total
+
+           !endif
+
+          !enddo
+         !enddo
+       !enddo 
+
+   !endif
 
    !WORKN = WORKN_PHI_TEMP2(:,:,:,k,bid)
 

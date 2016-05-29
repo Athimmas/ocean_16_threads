@@ -719,11 +719,11 @@
                     
       endif
 
-     if(nsteps_total == 1 .and. k == 45 .and. my_task == master_task) then
+     !if(nsteps_total == 1 .and. k == 45 .and. my_task == master_task) then
 
-      print *,"changed cont HDTK is ",HDTK_BUF(45,10,1,45,1)
+      !print *,"changed cont HDTK is ",HDTK_BUF(45,10,1,45,1)
 
-     endif
+     !endif
 
       !start_time = omp_get_wtime()  
       HDTK = HDTK_BUF(:,:,:,k,bid)
@@ -760,11 +760,11 @@
         endif
         HDTK=HDTK+TDTK(:,:,:,k,bid)
    
-     if( nsteps_total == 1 .and. k == 45 .and. my_task == master_task) then
+     !if( nsteps_total == 1 .and. k == 45 .and. my_task == master_task) then
 
-      print *,"changed cont TDTK is ",TDTK(45,10,1,45,1)
+      !print *,"changed cont TDTK is ",TDTK(45,10,1,45,1)
 
-      endif
+      !endif
 
 
 
@@ -2950,30 +2950,24 @@
               fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
 
-            if(my_task == master_task .and. nsteps_total == 1 .and. k == 45 .and. i == 45 .and. j == 10 .and. n == 1)then
+            !if(my_task == master_task .and. nsteps_total == 1 .and. k == 45 .and. i == 45 .and. j == 10 .and. n == 1)then
 
-                   print *,"changed 1 at GTK write is"
-                   print *,"FX(i,j,n)",FX(i,j,n)
-                   print *,"FX(i-1,j,n)",FX(i-1,j,n)
-                   print *,"FY(i,j,n)", FY(i,j,n)
-                   print *,"FY(i,j-1,n)",FY(i,j-1,n)
-                   print *,"fzprev",fzprev
-                   print *,"fz",fz
-                   print *,"dzr_unified(k)",dzr_unified(k)
-                   print *,"TAREA_R_UNIFIED(i,j,bid)",TAREA_R_UNIFIED(i,j,bid) 
+                   !print *,"changed 1 at GTK write is"
+                   !print *,"FX(i,j,n)",FX(i,j,n)
+                   !print *,"FX(i-1,j,n)",FX(i-1,j,n)
+                   !print *,"FY(i,j,n)", FY(i,j,n)
+                   !print *,"FY(i,j-1,n)",FY(i,j-1,n)
+                   !print *,"fzprev",fzprev
+                   !print *,"fz",fz
+                   !print *,"dzr_unified(k)",dzr_unified(k)
+                   !print *,"TAREA_R_UNIFIED(i,j,bid)",TAREA_R_UNIFIED(i,j,bid) 
 
-              endif
+              !endif
 
 
               GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &               !done
                            + FY(i,j,n) - FY(i,j-1,n)  &
                       + fzprev - fz )*dzr_unified(k)*TAREA_R_UNIFIED(i,j,bid)   
-
-             if(my_task == master_task .and. nsteps_total == 1 .and. k == 45 .and. i == 45 .and. j == 10 .and. n == 1)then
-
-                   print *,"GTK is",GTK(i,j,n)
-
-              endif
 
 
                enddo

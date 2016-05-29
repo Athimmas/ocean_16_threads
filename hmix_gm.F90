@@ -2383,31 +2383,25 @@
 
                 fz = -KMASK(i,j) * p25 * WORK3(i,j)
 
-                 if(my_task == master_task .and. nsteps_total == 1 .and. k == 45 .and. i == 5 .and. j == 10 .and. n == 1 .and. bid == 2)then
+                 !if(my_task == master_task .and. nsteps_total == 1 .and. k == 45 .and. i == 5 .and. j == 10 .and. n == 1 .and. bid == 2)then
 
-                   print *,"original" 
-                   print *,"FX(i,j,n) contribution is",FX(i,j,n)
-                   print *,"FY(i,j,n) contribution is",FY(i,j,n)
-                   print *,"FX(i-1,j,n) contribution is",FX(i-1,j,n)
-                   print *,"FY(i,j-1,n) contribution is",FX(i,j-1,n)
-                   print *,"fzprev",fzprev
-                   print *,"fz",fz
-                   print *,"dzr_unified(k)",dzr(k)
-                   print *,"TAREA_R_UNIFIED(i,j,bid)",TAREA_R(i,j,bid)
+                   !print *,"original" 
+                   !print *,"FX(i,j,n) contribution is",FX(i,j,n)
+                   !print *,"FY(i,j,n) contribution is",FY(i,j,n)
+                   !print *,"FX(i-1,j,n) contribution is",FX(i-1,j,n)
+                   !print *,"FY(i,j-1,n) contribution is",FX(i,j-1,n)
+                   !print *,"fzprev",fzprev
+                   !print *,"fz",fz
+                   !print *,"dzr_unified(k)",dzr(k)
+                   !print *,"TAREA_R_UNIFIED(i,j,bid)",TAREA_R(i,j,bid)
 
 
-                  endif
+                  !endif
 
 
                 GTK(i,j,n) = ( FX(i,j,n) - FX(i-1,j,n)  &               !done
                              + FY(i,j,n) - FY(i,j-1,n)  &
                       + fzprev - fz )*dzr(k)*TAREA_R(i,j,bid)
-
-                 if(my_task == master_task .and. nsteps_total == 1 .and. k == 45 .and. i == 5 .and. j == 10 .and. n == 1 .and. bid == 2)then
-
-                   print *,"GTK(i,j,n)",GTK(i,j,n)
-
-                  endif
 
 
               enddo
