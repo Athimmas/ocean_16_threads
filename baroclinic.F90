@@ -103,12 +103,12 @@
 
    integer, save :: done = 1
 
- !dir$ attributes offload:mic :: WORKN_PHI_TEMP
+ !dir$ attributes offload:mic :: WORKN_PHI
  real (r8), dimension(:,:,:,:,:),public,allocatable :: &
-      WORKN_PHI_TEMP
+      WORKN_PHI
 
   real (r8), dimension(:,:,:,:,:),public,allocatable :: &
-      WORKN_PHI_TEMP2
+      WORKN_HOST
 
   
 
@@ -171,10 +171,6 @@
 
    integer  :: &
       off_sig = 1       
-
-   !dir$ attributes offload:mic :: WORKN_PHI
-   real (r8), dimension(nx_block,ny_block,nt,km) :: &
-      WORKN_PHI 
 
 !EOC
 !***********************************************************************
@@ -467,8 +463,8 @@
  allocate(TCUR_UNIFIED(nx_block_unified,ny_block_unified,km,nt,1))
  allocate(UCUR_UNIFIED(nx_block_unified,ny_block_unified,km,1))
  allocate(VCUR_UNIFIED(nx_block_unified,ny_block_unified,km,1)) 
- allocate(WORKN_PHI_TEMP(nx_block_unified,ny_block_unified,nt,km,1))
- allocate(WORKN_PHI_TEMP2(nx_block,ny_block,nt,km,nblocks_clinic))
+ allocate(WORKN_PHI(nx_block_unified,ny_block_unified,nt,km,1))
+ allocate(WORKN_HOST(nx_block,ny_block,nt,km,nblocks_clinic))
 
  end subroutine init_baroclinic
 
@@ -1860,149 +1856,95 @@
 
    if(k==1)then
 
-   call merger( HMXL(:,:,bid), HMXL_UNIFIED(:,:,1), bid , this_block)
-   call merger( KPP_HBLT(:,:,bid), KPP_HBLT_UNIFIED(:,:,1), bid , this_block)
+     call merger( HMXL(:,:,bid), HMXL_UNIFIED(:,:,1), bid , this_block)
+     call merger( KPP_HBLT(:,:,bid), KPP_HBLT_UNIFIED(:,:,1), bid , this_block)
 
-   do kk=1,km
-   call merger( VDC_GM(:,:,kk,bid), VDC_GM_UNIFIED(:,:,kk,1), bid, this_block )
-   enddo
+     do kk=1,km
+        call merger( VDC_GM(:,:,kk,bid), VDC_GM_UNIFIED(:,:,kk,1), bid, this_block )
+     enddo
 
-   do kk=0,km+1
-    do temp=1,2
-     call merger( VDC(:,:,kk,temp,bid), VDC_UNIFIED(:,:,kk,temp,1), bid, this_block )
-    enddo
-   enddo
+     do kk=0,km+1
+         do temp=1,2
+          call merger( VDC(:,:,kk,temp,bid), VDC_UNIFIED(:,:,kk,temp,1), bid, this_block )
+         enddo
+      enddo
  
+      !$omp barrier
 
-   !$omp barrier
+    if(bid == 1) then
+  
+      if(itsdone == 0) then
+        !dir$ offload_transfer target(mic:0)nocopy(SLX_UNIFIED,SLY_UNIFIED,SF_SUBM_X_UNIFIED,SF_SUBM_Y_UNIFIED,SF_SLX_UNIFIED,SF_SLY_UNIFIED:alloc_if(.true.) free_if(.false.)) &
+        !dir$ nocopy(TX_UNIFIED,TY_UNIFIED,TZ_UNIFIED:alloc_if(.true.) free_if(.false.)) &
+        !dir$ nocopy(UIT_UNIFIED,VIT_UNIFIED,HYXW_UNIFIED,HXYS_UNIFIED,WORKN_PHI :alloc_if(.true.) free_if(.false.) ) &
+        !dir$ in( KAPPA_ISOP_UNIFIED,KAPPA_THIC_UNIFIED,HOR_DIFF_UNIFIED,KAPPA_VERTICAL_UNIFIED : alloc_if(.true.) free_if(.false.) ) &
+        !dir$ in(KAPPA_LATERAL_UNIFIED,HXY_UNIFIED,HYX_UNIFIED,RX_UNIFIED,RY_UNIFIED,RB_UNIFIED,RBR_UNIFIED,KMT_UNIFIED,KMTE_UNIFIED,KMTN_UNIFIED:alloc_if(.true.) free_if(.false.)) &
+        !dir$ in(BUOY_FREQ_SQ_UNIFIED : alloc_if(.true.) free_if(.false.)) &
+        !dir$ in( SIGMA_TOPO_MASK_UNIFIED,DYT_UNIFIED,DXT_UNIFIED,HUS_UNIFIED,HUW_UNIFIED : alloc_if(.true.) free_if(.false.))
+         itsdone = itsdone + 1
+       endif
 
-   !if(nsteps_total == 1 .and. bid == 1 .and. my_task == master_task ) then
 
-   !print *,"inputs changed are ",TCUR_UNIFIED(45,10,45,1,bid),UCUR_UNIFIED(45,10,45,bid),VCUR_UNIFIED(45,10,45,bid)
 
-   !print *,"values are", WORKN_PHI_TEMP2(5,10,1,k,bid),WORKN(5,10,1),k
-
-   !endif
+     endif
+ 
 
    if(nsteps_total == 1) then
 
-   do kk=1,km
-   call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
-   enddo
+       do kk=1,km
+          call hdifft(kk, WORKN_HOST(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
+       enddo
 
    else
 
-   if(bid == 1) then
+        if(bid == 1) then
 
-  !dir$ offload begin target(mic:0)in(kk,TCUR_UNIFIED,UCUR_UNIFIED,VCUR_UNIFIED,this_block,tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER) &
-  !dir$ in(lsubmesoscale_mixing,dt,dtu,HYX_UNIFIED,HXY_UNIFIED,RZ_SAVE_UNIFIED,RX_UNIFIED,RY_UNIFIED,TX_UNIFIED,TY_UNIFIED,TZ_UNIFIED,KMT_UNIFIED,KMTE_UNIFIED) &
-  !dir$ in(KMTN_UNIFIED,implicit_vertical_mix,vmix_itype,KPP_HBLT_UNIFIED,HMXL_UNIFIED) &
-  !dir$ in(HYXW_UNIFIED,HXYS_UNIFIED,UIT_UNIFIED,VIT_UNIFIED,RB_UNIFIED,RBR_UNIFIED) &
-  !dir$ in(BL_DEPTH_UNIFIED,KAPPA_ISOP_UNIFIED,KAPPA_THIC_UNIFIED,HOR_DIFF_UNIFIED,KAPPA_VERTICAL_UNIFIED,KAPPA_LATERAL_UNIFIED)&
-  !dir$ in(kappa_isop_type,kappa_thic_type,kappa_freq,slope_control,SLA_SAVE_UNIFIED,nsteps_total, ah,ah_bolus,ah_bkg_bottom,ah_bkg_srfbl) &
-  !dir$ in(slm_r,slm_b,compute_kappa_unified,BUOY_FREQ_SQ_UNIFIED,SIGMA_TOPO_MASK_UNIFIED,dz_unified,dzw_unified,dzwr_unified,zw_unified,dzr_unified) &
-  !dir$ in(DYT_UNIFIED,DXT_UNIFIED,HUW_UNIFIED,HUS_UNIFIED,TAREA_R_UNIFIED,HTN_UNIFIED,HTE_UNIFIED,pi,zt_unified) &
-  !dir$ in(luse_const_horiz_len_scale,hor_length_scale_unified,TIME_SCALE_UNIFIED,efficiency_factor_unified) &
-  !dir$ in(SF_SLX_UNIFIED,SF_SLY_UNIFIED,TLT_UNIFIED,my_task,master_task,pressz_unified,sqrt_grav_unified,num_avail_tavg_fields) & 
-  !dir$ in(max_hor_grid_scale_unified,mix_pass,grav,zgrid_unified,DZT_UNIFIED,partial_bottom_cells,ldiag_cfl,radian,eod_last) &
-  !dir$ in(use_const_ah_bkg_srfbl,transition_layer_on)inout(WORKN_PHI_TEMP) &
-  !dir$ in(SLX_UNIFIED,SLY_UNIFIED,SF_SUBM_X_UNIFIED,SF_SUBM_Y_UNIFIED)inout(VDC_UNIFIED,VDC_GM_UNIFIED)
+          !dir$ offload begin target(mic:0)in(kk,TCUR_UNIFIED,UCUR_UNIFIED,VCUR_UNIFIED,this_block,tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER) &
+          !dir$ in(lsubmesoscale_mixing,dt,dtu,RZ_SAVE_UNIFIED) &
+          !dir$ in(implicit_vertical_mix,vmix_itype,KPP_HBLT_UNIFIED,HMXL_UNIFIED) &
+          !dir$ in(BL_DEPTH_UNIFIED)&
+          !dir$ in(kappa_isop_type,kappa_thic_type,kappa_freq,slope_control,SLA_SAVE_UNIFIED,nsteps_total, ah,ah_bolus,ah_bkg_bottom,ah_bkg_srfbl) &
+          !dir$ in(slm_r,slm_b,compute_kappa_unified,BUOY_FREQ_SQ_UNIFIED,dz_unified,dzw_unified,dzwr_unified,zw_unified,dzr_unified) &
+          !dir$ in(TAREA_R_UNIFIED,HTN_UNIFIED,HTE_UNIFIED,pi,zt_unified) &
+          !dir$ in(luse_const_horiz_len_scale,hor_length_scale_unified,TIME_SCALE_UNIFIED,efficiency_factor_unified) &
+          !dir$ in(TLT_UNIFIED,my_task,master_task,pressz_unified,sqrt_grav_unified,num_avail_tavg_fields) & 
+          !dir$ in(max_hor_grid_scale_unified,mix_pass,grav,zgrid_unified,DZT_UNIFIED,partial_bottom_cells,ldiag_cfl,radian,eod_last) &
+          !dir$ in(use_const_ah_bkg_srfbl,transition_layer_on)inout(WORKN_PHI : alloc_if(.false.) free_if(.false.)) &
+          !dir$ inout(VDC_UNIFIED,VDC_GM_UNIFIED) &
+          !dir$ nocopy(SLX_UNIFIED,SLY_UNIFIED,SF_SUBM_X_UNIFIED,SF_SUBM_Y_UNIFIED,KAPPA_ISOP_UNIFIED,KAPPA_THIC_UNIFIED,HOR_DIFF_UNIFIED : alloc_if(.false.) free_if(.false.) ) &
+          !dir$ nocopy(KAPPA_LATERAL_UNIFIED,SF_SLX_UNIFIED,SF_SLY_UNIFIED,KAPPA_VERTICAL_UNIFIED : alloc_if(.false.) free_if(.false.) ) &
+          !dir$ nocopy(HYX_UNIFIED,HXY_UNIFIED,RX_UNIFIED,RY_UNIFIED : alloc_if(.false.) free_if(.false.)) &
+          !dir$ nocopy(TX_UNIFIED,TY_UNIFIED,TZ_UNIFIED,RB_UNIFIED,RBR_UNIFIED,KMT_UNIFIED,KMTE_UNIFIED,KMTN_UNIFIED : alloc_if(.false.) free_if(.false.) ) &
+          !dir$ nocopy(SIGMA_TOPO_MASK_UNIFIED,UIT_UNIFIED,VIT_UNIFIED : alloc_if(.false.) free_if(.false.) ) & 
+          !dir$ nocopy(DYT_UNIFIED,DXT_UNIFIED,HYXW_UNIFIED,HXYS_UNIFIED,HUS_UNIFIED,HUW_UNIFIED : alloc_if(.false.) free_if(.false.) ) &
+          !dir$ nocopy(HDTK_BUF,TDTK) 
 
 
-   do kk=1,km
-   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,1), TCUR_UNIFIED(:,:,:,:,1),UCUR_UNIFIED(:,:,:,1), VCUR_UNIFIED(:,:,:,1), this_block)
-   enddo
+               do kk=1,km
+                  call hdifft_unified(kk, WORKN_PHI(:,:,:,kk,1), TCUR_UNIFIED(:,:,:,:,1),UCUR_UNIFIED(:,:,:,1), VCUR_UNIFIED(:,:,:,1), this_block)
+               enddo
 
-   !dir$ end offload
+          !dir$ end offload
 
-   endif
+        endif
    
    endif
 
-   endif
+   endif  !k==1
 
    !$omp barrier
 
-   if(nsteps_total == 1) then
+   if(nsteps_total /= 1) then
 
    do n=1,nt
-   call splitter(WORKN(:,:,n),WORKN_PHI_TEMP(:,:,n,k,1),bid,this_block)
+   call splitter(WORKN(:,:,n),WORKN_PHI(:,:,n,k,1),bid,this_block)
    enddo
 
    else
 
-   WORKN = WORKN_PHI_TEMP2(:,:,:,k,bid)
+   WORKN = WORKN_HOST(:,:,:,k,bid)
 
    endif
-
-   !if( bid == 1 .and. my_task == master_task ) then
- 
-       !do n=1,nt
-         !do j=1,ny_block
-          !do i=1,nx_block
-
-           !if( abs(WORKN(i,j,n) - WORKN_PHI_TEMP2(i,j,n,k,bid)) > 1e-10  ) then
-
-              !print *,i,j,n,k,(WORKN(i,j,n) - WORKN_PHI_TEMP2(i,j,n,k,bid)),nsteps_total
-
-           !endif
-
-          !enddo
-         !enddo
-       !enddo 
-
-   !endif
-
-   !WORKN = WORKN_PHI_TEMP2(:,:,:,k,bid)
-
-   !!$omp barrier
-   !if (k == 1) then
-   !VDC = VDC_UNIFIED
-   !VDC_GM = VDC_GM_UNIFIED
-   !endif
-
-   !$omp barrier
-  !if(my_task == master_task .and. k == 1  ) then
-
-   !print *,WORKN_PHI_TEMP(3,7,1,1,bid)
-
-   !do n=1,nt
-   !do kk=1,km
-    !do j=1,ny_block
-     !do i=1,nx_block
-
-        !if( abs(WORKN_PHI_TEMP2(i,j,kk,n,bid) - WORKN_PHI_TEMP(i,j,kk,n,bid)) .gt. 1e-19 ) then 
-           !print *,i,j,kk,n,WORKN_PHI_TEMP2(i,j,kk,n,bid),WORKN_PHI_TEMP(i,j,kk,n,bid),nsteps_total
-           !print *,"error is ",WORKN_PHI_TEMP2(i,j,kk,n,bid) - WORKN_PHI_TEMP(i,j,kk,n,bid)
-           !exit
-        !endif
-
-      !enddo
-     !enddo
-    !enddo
-   !enddo 
-
-  !if( all(WORKN_PHI_TEMP .eq. WORKN_PHI_TEMP2  )  ) then
-   
-   !if(WORKN_PHI_TEMP(3,7,1,1,bid) .eq. WORKN_PHI_TEMP2(3,7,1,1,bid)) then
-  
-   !print *,"fine",WORKN_PHI_TEMP(3,7,1,1,bid),WORKN_PHI_TEMP2(3,7,1,1,bid), WORKN_PHI_TEMP(3,7,1,1,bid) - WORKN_PHI_TEMP2(3,7,1,1,bid)
-   
-  !else
-
-   !print *,"error",WORKN_PHI_TEMP(3,7,1,1,bid),WORKN_PHI_TEMP2(3,7,1,1,bid), &
-   !        WORKN_PHI_TEMP(3,7,1,1,bid) - WORKN_PHI_TEMP2(3,7,1,1,bid),nsteps_total
-
-
-  !endif
-
-   !if(my_task==master_task)then
-
-   !   open(unit=10,file="/home/aketh/ocn_correctness_data/changed.txt",status="unknown",position="append",action="write",form="formatted")
-   !   write(10),WORKN
-   !   close(10)
-
-   !endif
 
    FT = FT + WORKN
 

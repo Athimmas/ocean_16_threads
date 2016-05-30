@@ -68,7 +68,9 @@
 
 !variables for horizontal_mix
 
-   real (POP_r8), dimension(nx_block_unified,ny_block_unified,nt,km,1) :: &
+   !dir$ attributes offload:mic :: TDTK
+   !dir$ attributes offload:mic :: HDTK_BUF
+   real (POP_r8), dimension(nx_block_unified,ny_block_unified,nt,km,1),public :: &
       TDTK,HDTK_BUF      ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    !dir$ attributes offload:mic :: RX_UNIFIED
@@ -859,7 +861,7 @@
 
         !start_time = omp_get_wtime()  
 
-        !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)NUM_THREADS(60) 
+        !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk)NUM_THREADS(60) 
         do kk=1,km
 
         call state_unified (kk, kk, TMIX(:,:,kk,1), TMIX(:,:,kk,2),  &
@@ -873,7 +875,7 @@
 
         kk=1
 
-            !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,KMASKE,KMASKN,tempi,tempip1,tempj,tempjp1)num_threads(60)
+            !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,KMASKE,KMASKN,tempi,tempip1,tempj,tempjp1)num_threads(60)
             do j=1,ny_block_unified
               do i=1,nx_block_unified
 
@@ -953,8 +955,8 @@
 
             if ( kk < km ) then
 
-            !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,temp_ksi,temp_ksip1,temp_ksj,temp_ksjp1,kmask,kmaske,kmaskn,temp_ksim1,kmaskeim1) &
-            !!$OMP PRIVATE(txpim1,txim1,temp_ksjm1,kmasknjm1,typjm1,tyjm1)NUM_THREADS(60)
+            !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,temp_ksi,temp_ksip1,temp_ksj,temp_ksjp1,kmask,kmaske,kmaskn,temp_ksim1,kmaskeim1) &
+            !$OMP PRIVATE(txpim1,txim1,temp_ksjm1,kmasknjm1,typjm1,tyjm1)NUM_THREADS(60)
             do j=1,ny_block_unified
               do i=1,nx_block_unified
                  KMASK = merge(c1, c0, kk < KMT_unified(i,j,bid))
@@ -1124,10 +1126,9 @@
 
         enddo   ! end of kk-loop
 
-        if(k==1)then
           !if(.not. registry_match('init_gm')) then
           do n=3,nt 
-           !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk,n,j,i)collapse(3)num_threads(60)
+           !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk,n,j,i)collapse(3)num_threads(60)
            do kk=1,km-1
              do j=1,ny_block_unified
                 do i=1,nx_block_unified
@@ -1137,7 +1138,6 @@
             enddo
            enddo
           !endif
-         endif
 
 
 
@@ -1424,7 +1424,7 @@
    BY_VERT_AVG = c0
 
 
-     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(k,kk,temp,j,i)num_threads(60)collapse(4)
+     !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(k,kk,temp,j,i)num_threads(60)collapse(4)
      do k=1,km
         do kk=1,2
            do temp=1,2
@@ -1466,7 +1466,7 @@
      zw_top = c0
      if ( k > 1 )  zw_top = zw_unified(k-1)
 
-    !!$OMP PARALLEL DO SHARED(CONTINUE_INTEGRAL,BX_VERT_AVG,RX_UNIFIED,RY_UNIFIED,ML_DEPTH)PRIVATE(i,WORK3)num_threads(60)SCHEDULE(dynamic,16)
+    !$OMP PARALLEL DO SHARED(CONTINUE_INTEGRAL,BX_VERT_AVG,RX_UNIFIED,RY_UNIFIED,ML_DEPTH)PRIVATE(i,WORK3)num_threads(60)SCHEDULE(dynamic,16)
     do j=1,ny_block_unified
         do i=1,nx_block_unified
 
@@ -1551,7 +1551,7 @@
 
           
      do k=2,km
-        !!$OMP PARALLEL DO SHARED(WORK3,CONTINUE_INTEGRAL,WORK2,k,bid,dzw_unified,zt_unified,dzwr_unified,RZ_SAVE_UNIFIED,ML_DEPTH)PRIVATE(i,j)DEFAULT(NONE)num_threads(60)
+        !$OMP PARALLEL DO SHARED(WORK3,CONTINUE_INTEGRAL,WORK2,k,bid,dzw_unified,zt_unified,dzwr_unified,RZ_SAVE_UNIFIED,ML_DEPTH)PRIVATE(i,j)DEFAULT(NONE)num_threads(60)
         do j=1,ny_block_unified
            do i=1,nx_block_unified
 
@@ -1606,8 +1606,8 @@
 
      do kk=ktp,kbt
 
-       !!$OMP PARALLEL DO DEFAULT(NONE)PRIVATE(i,j)SHARED(reference_depth,ML_DEPTH,KMT,WORK3,WORK2,WORK1,TIME_SCALE_UNIFIED,HLS,SF_SUBM_X_UNIFIED,SF_SUBM_Y_UNIFIED) &
-       !!$OMP SHARED(BX_VERT_AVG,BY_VERT_AVG,DXT_UNIFIED,DYT_UNIFIED,max_hor_grid_scale_unified,efficiency_factor_unified,kk,k,bid)num_threads(60)  
+       !$OMP PARALLEL DO DEFAULT(NONE)PRIVATE(i,j)SHARED(reference_depth,ML_DEPTH,KMT_UNIFIED,WORK3,WORK2,WORK1,TIME_SCALE_UNIFIED,HLS,SF_SUBM_X_UNIFIED,SF_SUBM_Y_UNIFIED) &
+       !$OMP SHARED(BX_VERT_AVG,BY_VERT_AVG,DXT_UNIFIED,DYT_UNIFIED,max_hor_grid_scale_unified,efficiency_factor_unified,kk,k,bid)num_threads(60)  
        do j=1,ny_block_unified
            do i=1,nx_block_unified
 
@@ -1667,7 +1667,7 @@
        factor = c0
      endif
 
-     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+     !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
      do j=1,ny_block_unified
        do i=1,nx_block_unified
 
@@ -1705,7 +1705,7 @@
 
 
 
-     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+     !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
      do j=jb,je
        do i=ib,ie
 
@@ -2175,8 +2175,8 @@
             TLT_UNIFIED%DIABATIC_DEPTH(:,:,bid) = zw_unified(k)
           endif
 
-          !!$OMP PARALLEL DO &
-          !!$OMP DEFAULT(SHARED)PRIVATE(kid,i,j,kk_sub,kk)NUM_THREADS(60)COLLAPSE(3)
+          !$OMP PARALLEL DO &
+          !$OMP DEFAULT(SHARED)PRIVATE(kid,i,j,kk_sub,kk)NUM_THREADS(60)COLLAPSE(3)
           do kk=1,km
             do kk_sub = ktp,kbt
                   do j=1,ny_block_unified
@@ -2195,7 +2195,7 @@
                   enddo
             enddo
           enddo
-          !!$OMP END PARALLEL DO
+          !$OMP END PARALLEL DO
           call transition_layer_unified ( this_block ) 
  
         endif
@@ -2247,7 +2247,7 @@
 
         !start_time = omp_get_wtime()
 
-          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)
+          !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)
           do kk_sub=ktp,kbt
             do kk=1,km
                do j=1,ny_block_unified
@@ -2260,7 +2260,7 @@
           enddo
 
           !start_time = omp_get_wtime()
-          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)collapse(3)schedule(dynamic,4)
+          !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(kk_sub,kk,j,i)NUM_THREADS(60)collapse(3)schedule(dynamic,4)
            do kk_sub=ktp,kbt
             do kk=1,km
              do j=1,ny_block_unified
@@ -2294,7 +2294,7 @@
 
              kid = kk + kk_sub - 2
 
-             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,dzw,dz_bottom,zt)NUM_THREADS(60)
+             !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i,dzw_unified,dz_bottom,zt_unified)NUM_THREADS(60)
              do j=1,ny_block_unified
                    do i=1,nx_block_unified
 
@@ -3200,7 +3200,7 @@
 
 
    do k=1,km
-     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(ztmp,j,i)NUM_THREADS(60)
+     !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(ztmp,j,i)NUM_THREADS(60)
      do j=2,ny_block_unified-1
        do i=2,nx_block_unified-1
 
@@ -3212,7 +3212,7 @@
 
        enddo
      enddo
-     !!$OMP END PARALLEL DO
+     !$OMP END PARALLEL DO
    enddo
 
    if ( overwrite_hblt  .and.  .not.use_hmxl ) then
@@ -3307,7 +3307,7 @@
       
       do k=1,km
 
-              !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60) 
+              !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60) 
               do j=1,ny_block_unified
                    do i=1,nx_block_unified
 
@@ -3351,7 +3351,7 @@
 #endif
 #endif
 
-             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+             !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
              do j=1,ny_block_unified
                    do i=1,nx_block_unified
 
@@ -3368,7 +3368,7 @@
 
              do k=1,km-1
 
-             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+             !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
              do j=1,ny_block_unified
                    do i=1,nx_block_unified
 
@@ -3410,8 +3410,7 @@
 
         do kk=ktp,kbt
 
-              !!$OMP PARALLEL DO
-              !DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)SCHEDULE(DYNAMIC,16)
+              !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)SCHEDULE(DYNAMIC,16)
               do j=1,ny_block_unified
                    do i=1,nx_block_unified
                       if (kk == ktp) then
@@ -3480,7 +3479,7 @@
 
      do k=1,km
 
-             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+             !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
              do j=1,ny_block_unified
                    do i=1,nx_block_unified
 
@@ -3502,7 +3501,7 @@
               enddo
       enddo
 
-             !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
+             !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
              do j=1,ny_block_unified
                    do i=1,nx_block_unified
 
@@ -3590,7 +3589,7 @@
           call state_unified( k, k+1, TMIX(:,:,k,1), TMIX(:,:,k,2), &
                             this_block, DRHODT=RHOT, DRHODS=RHOS )
 
-          !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60) 
+          !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60) 
           do j=1,ny_block_unified
              do i=1,nx_block_unified
 
@@ -3614,7 +3613,7 @@
         enddo
 
      do k=1,km-1
-       !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
+       !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
        do j=1,ny_block_unified
         do i=1,nx_block_unified
 
@@ -3641,7 +3640,7 @@
       enddo
 
       do k=1,km-1
-       !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
+       !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
        do j=1,ny_block_unified
         do i=1,nx_block_unified
 
@@ -3654,7 +3653,7 @@
       enddo
 
       do k=2,km
-       !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
+       !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j)NUM_THREADS(60)
        do j=1,ny_block_unified
         do i=1,nx_block_unified
 
@@ -3728,7 +3727,7 @@
       !start_time = omp_get_wtime() 
       bid = this_block%local_id
 
-     !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(k,kk,temp,j,i)num_threads(60)collapse(4)
+     !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(k,kk,temp,j,i)num_threads(60)collapse(4)
      do k=1,km
         do kk=1,2
            do temp=1,2 
@@ -3783,8 +3782,9 @@
 
         do kk=1,2
  
-          !!$OMP PARALLEL DO PRIVATE(I,J)DEFAULT(SHARED)NUM_THREADS(60) 
+          !$OMP PARALLEL DO PRIVATE(I,J)DEFAULT(SHARED)NUM_THREADS(60) 
           do j=1,ny_block_unified
+           !dir$ novector
            do i=1,nx_block_unified
 
  
@@ -3931,7 +3931,7 @@
 
              enddo
           enddo
-          !!$OMP END PARALLEL DO
+          !$OMP END PARALLEL DO
         enddo
       enddo
 
@@ -3953,6 +3953,7 @@
 !
 !-----------------------------------------------------------------------
 
+          !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(j,i)NUM_THREADS(60)
           do j=1,ny_block_unified
              do i=1,nx_block_unified
 
@@ -3973,7 +3974,7 @@
           enddo
 
       !start_time = omp_get_wtime()
-      !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j,k,kk,reference_depth)num_threads(60)SCHEDULE(DYNAMIC,6) 
+      !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j,k,kk,reference_depth)num_threads(60)SCHEDULE(DYNAMIC,6) 
       do k=1,km
 
         reference_depth(ktp) = zt_unified(k) - p25 * dz_unified(k)
@@ -4183,7 +4184,7 @@
 !     start of tapering
 !
 !-----------------------------------------------------------------------
-      !!$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j,k,kk,reference_depth)num_threads(60)
+      !$OMP PARALLEL DO DEFAULT(SHARED)PRIVATE(i,j,k,kk,reference_depth)num_threads(60)
       do k=1,km
 
         reference_depth(ktp) = zt_unified(k) - p25 * dz_unified(k)
