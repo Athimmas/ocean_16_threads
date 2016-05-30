@@ -100,12 +100,17 @@
    logical (log_kind) :: &
       reset_to_freezing   ! flag to prevent very cold water
 
+
+  !dir$ attributes offload:mic :: TCUR_UNIFIED
+  !dir$ attributes offload:mic :: UCUR_UNIFIED
+  !dir$ attributes offload:mic :: VCUR_UNIFIED   
    real (r8) ,dimension(:,:,:,:,:),allocatable,save :: TCUR_UNIFIED
    real (r8) ,dimension(:,:,:,:),allocatable,save :: UCUR_UNIFIED
    real (r8) ,dimension(:,:,:,:),allocatable,save :: VCUR_UNIFIED 
 
    integer, save :: done = 1
 
+ !dir$ attributes offload:mic :: WORKN_PHI_TEMP
  real (r8), dimension(:,:,:,:,:),public,allocatable :: &
       WORKN_PHI_TEMP
 
@@ -1886,17 +1891,28 @@
 
    !endif
 
+   if(nsteps_total == 1) then
+
+   do kk=1,km
+   call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
+   enddo
+
+   else
 
    if(bid == 1) then
-   !start_time = omp_get_wtime()
+
+   !!dir$ offload begin target(mic:1)in(TX_UNIFIED,TY_UNIFIED,RX_UNIFIED,RY_UNIFIED)
+
    do kk=1,km
-   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,1), TCUR_UNIFIED(:,:,:,:,1), UCUR_UNIFIED(:,:,:,1), VCUR_UNIFIED(:,:,:,1), this_block)
+   call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,1), TCUR_UNIFIED(:,:,:,:,1),UCUR_UNIFIED(:,:,:,1), VCUR_UNIFIED(:,:,:,1), this_block)
    enddo
+
+   !!dir$ end offload
+
+   endif
+   
    endif
 
-   !end_time = omp_get_wtime()
-
-   !print *,"time taken is ", end_time - start_time
  
    !if(itsdone == 0) then   
    !!dir$ offload_transfer target(mic:1)  nocopy( SLX,SLY,SF_SUBM_X,SF_SUBM_Y,SF_SLX,SF_SLY,TX,TY,TZ,WTOP_ISOP,WBOT_ISOP  : alloc_if(.true.) free_if(.false.)) &
@@ -1920,9 +1936,9 @@
 
    !start_time = omp_get_wtime()
 
-   do kk=1,km
-   call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
-   enddo
+   !do kk=1,km
+   !call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
+   !enddo
 
    !end_time = omp_get_wtime()
 
@@ -1934,9 +1950,17 @@
 
    !$omp barrier
 
+   if(nsteps_total == 1) then
+
    do n=1,nt
    call splitter(WORKN(:,:,n),WORKN_PHI_TEMP(:,:,n,k,1),bid,this_block)
    enddo
+
+   else
+
+   WORKN = WORKN_PHI_TEMP2(:,:,:,k,bid)
+
+   endif
 
    !if( bid == 1 .and. my_task == master_task ) then
  

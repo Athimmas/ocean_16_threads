@@ -550,7 +550,6 @@
 
    bid = this_block%local_id
 
-
    HDTK = c0
 
    select case (hmix_tracer_itype)
