@@ -101,7 +101,7 @@
    !dir$ attributes offload:mic :: smin
    !dir$ attributes offload:mic :: smax
    !dir$ attributes offload:mic :: pressz_unified
-   real (r8), dimension(km) :: &
+   real (r8), dimension(km),public :: &
       tmin, tmax,        &! valid temperature range for level k
       smin, smax,        &! valid salinity    range for level k
       pressz_unified      ! ref pressure (bars) at each level
@@ -219,8 +219,8 @@
                                              !  if luse_const_horiz_len_scale is false,
                                              !  then hor_length_scale is used as the 
                                              !  lower limit.
-
-   real (r8) :: &
+   !dir$ attributes offload:mic ::sqrt_grav_unified
+   real (r8),public :: &
       sqrt_grav_unified              ! sqrt(grav)
 
    integer (int_kind), parameter :: &

@@ -35,29 +35,28 @@
    use communicate, only: my_task, master_task
    use grid, only: FCOR, DZU, HUR, KMU, KMT, sfc_layer_type,                 &
        sfc_layer_varthick, partial_bottom_cells, dz, DZT, CALCT, dzw,        &
-       dzr,KMTE,KMTN,dzwr,zw,DYT,DXT,HUW,HUS,TAREA_R,HTN,HTE,zt,partial_bottom_cells, &
-       FCORT,TLAT
+       dzr
    use advection, only: advu, advt, comp_flux_vel_ghost
    use pressure_grad, only: lpressure_avg, gradp
-   use horizontal_mix, only: hdiffu, hdifft, iso_impvmixt_tavg , hmix_tracer_itype, &
+   use horizontal_mix, only: hdiffu, hdifft,iso_impvmixt_tavg, &
                              tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER, &
-                             lsubmesoscale_mixing,tavg_HDIFS,tavg_HDIFT
+                             lsubmesoscale_mixing
    use vertical_mix, only: vmix_coeffs, implicit_vertical_mix, vdiffu,       &
        vdifft, impvmixt, impvmixu, impvmixt_correct, convad, impvmixt_tavg,  &
-       vmix_itype,VDC_GM,VDC 
-   use vmix_kpp, only: add_kpp_sources,KPP_HBLT,HMXL,zgrid,linertial
+       vmix_itype,VDC_GM,VDC
+   use vmix_kpp, only: add_kpp_sources,HMXL,KPP_HBLT
    use diagnostics, only: ldiag_cfl, cfl_check, ldiag_global,                &
        DIAG_KE_ADV_2D, DIAG_KE_PRESS_2D, DIAG_KE_HMIX_2D, DIAG_KE_VMIX_2D,   &
        DIAG_TRACER_HDIFF_2D, DIAG_PE_2D, DIAG_TRACER_ADV_2D,                 &
        DIAG_TRACER_SFC_FLX, DIAG_TRACER_VDIFF_2D, DIAG_TRACER_SOURCE_2D
    use movie, only: define_movie_field, movie_requested, update_movie_field
-   use state_mod, only: state,sigo,state_coeffs,to,so
+   use state_mod, only: state
    use ice, only: liceform, ice_formation, increment_tlast_ice
    use time_management, only: mix_pass, leapfrogts, impcor, c2dtu, beta,     &
        gamma, c2dtt,dt,dtu , nsteps_total,eod_last
    use io_types, only: nml_in, nml_filename, stdout
    use tavg, only: define_tavg_field, accumulate_tavg_field, accumulate_tavg_now, &
-       tavg_method_max, tavg_method_min,ltavg_on,num_avail_tavg_fields
+       tavg_method_max, tavg_method_min,num_avail_tavg_fields
    use time_management, only : nsteps_run
    use forcing_fields, only: STF, SMF, lsmft_avail, SMFT, TFW
    use forcing_shf, only: SHF_QSW
@@ -69,21 +68,15 @@
        reset_passive_tracers, tavg_passive_tracers, &
        tavg_passive_tracers_baroclinic_correct, &
        set_interior_passive_tracers_3D
-   use hmix_gm_submeso_share, only: HYX,HXY,SLX,SLY,RZ_SAVE,RX,RY,TX,TY,TZ
-   use hmix_gm, only: WTOP_ISOP,WBOT_ISOP,HYXW,HXYS,UIT,VIT,RB,RBR,BL_DEPTH,              &
-                      KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,        &
-                      kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,SLA_SAVE, &
-                      slm_r,slm_b,ah,ah_bolus,ah_bkg_bottom,ah_bkg_srfbl,BUOY_FREQ_SQ,    &
-                      SIGMA_TOPO_MASK,use_const_ah_bkg_srfbl,transition_layer_on,compute_kappa,&
-                      SF_SLX,SF_SLY,TLT 
    use exit_mod, only: sigAbort, exit_pop, flushm
    use overflows
    use overflow_type
-   use mix_submeso, only: SF_SUBM_X,SF_SUBM_Y,luse_const_horiz_len_scale,hor_length_scale, &
-                    TIME_SCALE,efficiency_factor,max_hor_grid_scale,FZTOP_SUBM
    use omp_lib
-   use registry, only: registry_storage
    use horizontal_mix_unified
+   use hmix_gm, only:kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,&
+                     ah,ah_bolus,ah_bkg_bottom,ah_bkg_srfbl,slm_r,slm_b,use_const_ah_bkg_srfbl,&
+                     transition_layer_on
+   use mix_submeso, only:luse_const_horiz_len_scale,hor_length_scale 
 
    implicit none
    private
@@ -1901,50 +1894,30 @@
 
    if(bid == 1) then
 
-   !!dir$ offload begin target(mic:1)in(TX_UNIFIED,TY_UNIFIED,RX_UNIFIED,RY_UNIFIED)
+  !dir$ offload begin target(mic:0)in(kk,TCUR_UNIFIED,UCUR_UNIFIED,VCUR_UNIFIED,this_block,tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER) &
+  !dir$ in(lsubmesoscale_mixing,dt,dtu,HYX_UNIFIED,HXY_UNIFIED,RZ_SAVE_UNIFIED,RX_UNIFIED,RY_UNIFIED,TX_UNIFIED,TY_UNIFIED,TZ_UNIFIED,KMT_UNIFIED,KMTE_UNIFIED) &
+  !dir$ in(KMTN_UNIFIED,implicit_vertical_mix,vmix_itype,KPP_HBLT_UNIFIED,HMXL_UNIFIED) &
+  !dir$ in(HYXW_UNIFIED,HXYS_UNIFIED,UIT_UNIFIED,VIT_UNIFIED,RB_UNIFIED,RBR_UNIFIED) &
+  !dir$ in(BL_DEPTH_UNIFIED,KAPPA_ISOP_UNIFIED,KAPPA_THIC_UNIFIED,HOR_DIFF_UNIFIED,KAPPA_VERTICAL_UNIFIED,KAPPA_LATERAL_UNIFIED)&
+  !dir$ in(kappa_isop_type,kappa_thic_type,kappa_freq,slope_control,SLA_SAVE_UNIFIED,nsteps_total, ah,ah_bolus,ah_bkg_bottom,ah_bkg_srfbl) &
+  !dir$ in(slm_r,slm_b,compute_kappa_unified,BUOY_FREQ_SQ_UNIFIED,SIGMA_TOPO_MASK_UNIFIED,dz_unified,dzw_unified,dzwr_unified,zw_unified,dzr_unified) &
+  !dir$ in(DYT_UNIFIED,DXT_UNIFIED,HUW_UNIFIED,HUS_UNIFIED,TAREA_R_UNIFIED,HTN_UNIFIED,HTE_UNIFIED,pi,zt_unified) &
+  !dir$ in(luse_const_horiz_len_scale,hor_length_scale_unified,TIME_SCALE_UNIFIED,efficiency_factor_unified) &
+  !dir$ in(SF_SLX_UNIFIED,SF_SLY_UNIFIED,TLT_UNIFIED,my_task,master_task,pressz_unified,sqrt_grav_unified,num_avail_tavg_fields) & 
+  !dir$ in(max_hor_grid_scale_unified,mix_pass,grav,zgrid_unified,DZT_UNIFIED,partial_bottom_cells,ldiag_cfl,radian,eod_last) &
+  !dir$ in(use_const_ah_bkg_srfbl,transition_layer_on)inout(WORKN_PHI_TEMP) &
+  !dir$ in(SLX_UNIFIED,SLY_UNIFIED,SF_SUBM_X_UNIFIED,SF_SUBM_Y_UNIFIED)inout(VDC_UNIFIED,VDC_GM_UNIFIED)
+
 
    do kk=1,km
    call hdifft_unified(kk, WORKN_PHI_TEMP(:,:,:,kk,1), TCUR_UNIFIED(:,:,:,:,1),UCUR_UNIFIED(:,:,:,1), VCUR_UNIFIED(:,:,:,1), this_block)
    enddo
 
-   !!dir$ end offload
+   !dir$ end offload
 
    endif
    
    endif
-
- 
-   !if(itsdone == 0) then   
-   !!dir$ offload_transfer target(mic:1)  nocopy( SLX,SLY,SF_SUBM_X,SF_SUBM_Y,SF_SLX,SF_SLY,TX,TY,TZ,WTOP_ISOP,WBOT_ISOP  : alloc_if(.true.) free_if(.false.)) &
-   !!dir$ nocopy( UIT,VIT,HYXW,HXYS :alloc_if(.true.) free_if(.false.) ) &
-   !!dir$ in( KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,HXY,HYX,RX,RY,RB,RBR,KMT,KMTE,KMTN,BUOY_FREQ_SQ : alloc_if(.true.) free_if(.false.)) &
-   !!dir$ in( SIGMA_TOPO_MASK,DYT,DXT,HUS,HUW,TAREA_R,HTN,HTE,TIME_SCALE,DZT : alloc_if(.true.) free_if(.false.) ) in(TLT)
-   !itsdone = itsdone + 1
-   !endif
- 
-   !!dir$ offload begin target(mic:1)in(kk,TMIX,UMIX,VMIX,this_block,hmix_tracer_itype,tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER) &
-   !!dir$ in(lsubmesoscale_mixing,dt,dtu,RZ_SAVE,implicit_vertical_mix,vmix_itype,KPP_HBLT,HMXL) &
-   !!dir$ in(BL_DEPTH,kappa_isop_type,kappa_thic_type, kappa_freq,slope_control,SLA_SAVE,nsteps_total, ah,ah_bolus, ah_bkg_bottom,ah_bkg_srfbl) &
-   !!dir$ in(slm_r,slm_b,compute_kappa,dz,dzw,dzwr,zw,dzr,pi,zt) &
-   !!dir$ in(luse_const_horiz_len_scale,hor_length_scale,efficiency_factor,my_task,master_task) & 
-   !!dir$ in(max_hor_grid_scale,mix_pass,grav,zgrid,partial_bottom_cells,FCORT,linertial,ldiag_cfl,radian,TLAT,eod_last) &
-   !!dir$ in(ltavg_on,num_avail_tavg_fields,sigo,state_coeffs,to,so,use_const_ah_bkg_srfbl,transition_layer_on,tavg_HDIFS,tavg_HDIFT)out(WORKN_PHI) &
-   !!dir$ nocopy(SLX,SLY,SF_SUBM_X,SF_SUBM_Y,KAPPA_ISOP,KAPPA_THIC,HOR_DIFF,KAPPA_VERTICAL,KAPPA_LATERAL,SF_SLX,SF_SLY : alloc_if(.false.) free_if(.false.) ) &
-   !!dir$ nocopy(HYX,HXY,RX,RY,TX,TY,TZ,WTOP_ISOP,WBOT_ISOP,RB,RBR,KMT,KMTE,KMTN,SIGMA_TOPO_MASK,UIT,VIT : alloc_if(.false.) free_if(.false.) ) & 
-   !!dir$ nocopy(DYT,DXT,HYXW,HXYS,HUS,HUW,TAREA_R,HTN,HTE:alloc_if(.false.) free_if(.false.) ) & 
-   !!dir$ nocopy(TLT) inout(VDC,VDC_GM)
-
-   !start_time = omp_get_wtime()
-
-   !do kk=1,km
-   !call hdifft(kk, WORKN_PHI_TEMP2(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
-   !enddo
-
-   !end_time = omp_get_wtime()
-
-   !print *,"time taken at 2 is ", end_time - start_time
-
-   !!dir$ end offload
 
    endif
 
