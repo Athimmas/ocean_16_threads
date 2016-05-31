@@ -588,7 +588,7 @@
       this_block = get_block(blocks_clinic(iblock),iblock)
        do k=1,km
         do n=1,nt
-           call merger(TRACER (:,:,k,n,mixtime,iblock) , TCUR_UNIFIED(:,:,k,n,1) , iblock ,this_block)
+           call merger(TRACER (:,:,k,n,curtime,iblock) , TCUR_UNIFIED(:,:,k,n,1) , iblock ,this_block)
         enddo
        enddo
      enddo
@@ -597,69 +597,41 @@
       do iblock = 1,nblocks_clinic
       this_block = get_block(blocks_clinic(iblock),iblock)
        do k=1,km
-          call merger(UVEL(:,:,k,mixtime,iblock) , UCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
-          call merger(VVEL(:,:,k,mixtime,iblock) , VCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
+          call merger(UVEL(:,:,k,curtime,iblock) , UCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
+          call merger(VVEL(:,:,k,curtime,iblock) , VCUR_UNIFIED(:,:,k,1) ,iblock ,this_block)
        enddo
       enddo
 
 
-   !open(unit=10,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo.txt",status="unknown",position="append",action="write",form="formatted")
-   !open(unit=11,file="/home/aketh/ocn_correctness_data/16_OMP_block_halo_split.txt",status="unknown",position="append",action="write",form="formatted")
+   if(nsteps_run > 1) then
 
-   !do iblock = 1,nblocks_clinic
-        !do k=1,km
-         !do j=1,ny_block
-            !do i=1,nx_block
-
-                      !write(10,*),TRACER (i,j,k,1,curtime,iblock),i,j,k,iblock
-
-            !enddo
-         !enddo
-        !enddo
-   !enddo    
+    !dir$ offload_wait target(mic:0)wait(off_sig)
+     do iblock = 1,nblocks_clinic
+      this_block = get_block(blocks_clinic(iblock),iblock)
+       do k=1,km
+        do n=1,nt   
+          call splitter(WORKN_HOST(:,:,n,k,iblock) , WORKN_PHI(:,:,n,k,1) ,iblock,this_block)
+       enddo
+      enddo
+     enddo
 
 
-   !do iblock = 1,nblocks_clinic
-      !this_block = get_block(blocks_clinic(iblock),iblock)
+   endif
 
-      !do k=1,km
-         !call splitter(SPLIT_ARRAY(:,:,k,1,iblock),TMIX_COMB(:,:,k,1,1), iblock,this_block )
-      !enddo
-
-   !enddo 
-
-   !do iblock = 1,nblocks_clinic
-        !do k=1,km
-         !do j=1,ny_block
-           !do i=1,nx_block
-
-             !write(11,*),SPLIT_ARRAY(i,j,k,1,iblock),i,j,k,iblock
-
-            !enddo
-         !enddo
-        !enddo
-
-   !enddo
-
-   !close(10)
-   !close(11)
-
-   !done = 0
-
-   !endif
 
    do iblock = 1,nblocks_clinic
-   this_block = get_block(blocks_clinic(iblock),iblock)
+      this_block = get_block(blocks_clinic(iblock),iblock)
 
-   do kk=1,km
-   call splitter ( VDC_GM(:,:,kk,iblock), VDC_GM_UNIFIED(:,:,kk,1), iblock, this_block )
-   enddo
+         do kk=1,km
+             call splitter ( VDC_GM(:,:,kk,iblock), VDC_GM_UNIFIED(:,:,kk,1), iblock, this_block )
+         enddo
 
    do kk=0,km+1
     do temp=1,2
-     call splitter ( VDC(:,:,kk,temp,iblock), VDC_UNIFIED(:,:,kk,temp,1),iblock ,this_block )
+             call splitter ( VDC(:,:,kk,temp,iblock), VDC_UNIFIED(:,:,kk,temp,1),iblock ,this_block )
     enddo
    enddo
+
   enddo
 
 
@@ -1889,13 +1861,14 @@
      endif
  
 
-   if(nsteps_total == 1) then
+   if(nsteps_run == 1) then
 
        do kk=1,km
           call hdifft(kk, WORKN_HOST(:,:,:,kk,bid), TMIX, UMIX, VMIX, this_block)
        enddo
 
-   else
+   endif
+
 
         if(bid == 1) then
 
@@ -1917,7 +1890,7 @@
           !dir$ nocopy(TX_UNIFIED,TY_UNIFIED,TZ_UNIFIED,RB_UNIFIED,RBR_UNIFIED,KMT_UNIFIED,KMTE_UNIFIED,KMTN_UNIFIED : alloc_if(.false.) free_if(.false.) ) &
           !dir$ nocopy(SIGMA_TOPO_MASK_UNIFIED,UIT_UNIFIED,VIT_UNIFIED : alloc_if(.false.) free_if(.false.) ) & 
           !dir$ nocopy(DYT_UNIFIED,DXT_UNIFIED,HYXW_UNIFIED,HXYS_UNIFIED,HUS_UNIFIED,HUW_UNIFIED : alloc_if(.false.) free_if(.false.) ) &
-          !dir$ nocopy(HDTK_BUF,TDTK) 
+          !dir$ nocopy(HDTK_BUF,TDTK)signal(off_sig) 
 
 
                do kk=1,km
@@ -1927,24 +1900,12 @@
           !dir$ end offload
 
         endif
-   
-   endif
 
    endif  !k==1
 
    !$omp barrier
 
-   if(nsteps_total /= 1) then
-
-   do n=1,nt
-   call splitter(WORKN(:,:,n),WORKN_PHI(:,:,n,k,1),bid,this_block)
-   enddo
-
-   else
-
    WORKN = WORKN_HOST(:,:,:,k,bid)
-
-   endif
 
    FT = FT + WORKN
 
