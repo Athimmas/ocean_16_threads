@@ -1841,7 +1841,7 @@
          enddo
       enddo
  
-      !$omp barrier
+    !$omp barrier
 
     if(bid == 1) then
   
@@ -1872,6 +1872,8 @@
 
         if(bid == 1) then
 
+          start_time = omp_get_wtime()
+
           !dir$ offload begin target(mic:0)in(kk,TCUR_UNIFIED,UCUR_UNIFIED,VCUR_UNIFIED,this_block,tavg_HDIFE_TRACER,tavg_HDIFN_TRACER,tavg_HDIFB_TRACER) &
           !dir$ in(lsubmesoscale_mixing,dt,dtu,RZ_SAVE_UNIFIED) &
           !dir$ in(implicit_vertical_mix,vmix_itype,KPP_HBLT_UNIFIED,HMXL_UNIFIED) &
@@ -1898,12 +1900,14 @@
                enddo
 
           !dir$ end offload
+ 
+          end_time = omp_get_wtime()
+
+          print *,"time is ",end_time - start_time
 
         endif
 
    endif  !k==1
-
-   !$omp barrier
 
    WORKN = WORKN_HOST(:,:,:,k,bid)
 
