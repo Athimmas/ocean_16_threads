@@ -163,7 +163,7 @@
    !dir$ attributes offload:mic :: DYT_UNIFIED
    !dir$ attributes offload:mic :: HUS_UNIFIED
    !dir$ attributes offload:mic :: HUW_UNIFIED
-   real (POP_r8), dimension(nx_block_unified,ny_block_unified,1), public :: &
+   real (POP_r8), dimension(:,:,:), public,allocatable :: &
       DYT_UNIFIED, DXT_UNIFIED,HUS_UNIFIED,HUW_UNIFIED
 
       !*** dimension(1:km)
@@ -505,6 +505,14 @@
    allocate (KMTE_UNIFIED(nx_block_unified,ny_block_unified,1))
 
    allocate (KMTN_UNIFIED(nx_block_unified,ny_block_unified,1))
+
+   allocate (DXT_UNIFIED(nx_block_unified,ny_block_unified,1))
+
+   allocate (DYT_UNIFIED(nx_block_unified,ny_block_unified,1))
+
+   allocate (HUS_UNIFIED(nx_block_unified,ny_block_unified,1))
+
+   allocate (HUW_UNIFIED(nx_block_unified,ny_block_unified,1))
 
    endif
 
