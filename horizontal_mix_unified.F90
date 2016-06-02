@@ -70,7 +70,7 @@
 
    !dir$ attributes offload:mic :: TDTK
    !dir$ attributes offload:mic :: HDTK_BUF
-   real (POP_r8), dimension(nx_block_unified,ny_block_unified,nt,km,1),public :: &
+   real (POP_r8), dimension(:,:,:,:,:),allocatable,public :: &
       TDTK,HDTK_BUF      ! Hdiff(T) for nth tracer at level k from submeso_flux code
 
    !dir$ attributes offload:mic :: RX_UNIFIED
@@ -413,10 +413,7 @@
  use hmix_gm_submeso_share, only: HXY,HYX
  use blocks
   
-   integer :: k,temp
-
-
-   integer :: iblock,num_row,num_col,first_col_begin,first_row_begin,first_col_begin_duplicate
+   integer :: iblock,k,temp
 
   type (block) ::        &
       this_block           ! block information for current block
@@ -426,6 +423,11 @@
    ie = nx_block_unified - 2
    jb = 3
    je = ny_block_unified - 2
+
+
+   allocate(HDTK_BUF(nx_block_unified,ny_block_unified,nt,km,1))
+   allocate(TDTK(nx_block_unified,ny_block_unified,nt,km,1) )
+
 
    if( .not. allocated (HXY_UNIFIED)) then
 

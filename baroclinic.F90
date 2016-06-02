@@ -1892,7 +1892,7 @@
           !dir$ nocopy(TX_UNIFIED,TY_UNIFIED,TZ_UNIFIED,RB_UNIFIED,RBR_UNIFIED,KMT_UNIFIED,KMTE_UNIFIED,KMTN_UNIFIED : alloc_if(.false.) free_if(.false.) ) &
           !dir$ nocopy(SIGMA_TOPO_MASK_UNIFIED,UIT_UNIFIED,VIT_UNIFIED : alloc_if(.false.) free_if(.false.) ) & 
           !dir$ nocopy(DYT_UNIFIED,DXT_UNIFIED,HYXW_UNIFIED,HXYS_UNIFIED,HUS_UNIFIED,HUW_UNIFIED : alloc_if(.false.) free_if(.false.) ) &
-          !dir$ nocopy(HDTK_BUF,TDTK)signal(off_sig) 
+          !dir$ nocopy(HDTK_BUF,TDTK : alloc_if(.true.) free_if(.false.) )signal(off_sig) 
 
 
                do kk=1,km
