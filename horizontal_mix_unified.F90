@@ -422,51 +422,6 @@
       this_block           ! block information for current block
 
 
-
-  if(my_task == master_task) then
-   do iblock = 1,nblocks_clinic
-
-      this_block = get_block(blocks_clinic(iblock),iblock)
-      print *,iblock,"ibegin",this_block%i_glob(this_block%ib)
-      print *,iblock,"iend",this_block%i_glob(this_block%ie)
-      print *,iblock,"jbegin",this_block%j_glob(this_block%jb)
-      print *,iblock,"jend",this_block%j_glob(this_block%je)
-   enddo
-
-   endif
-
-
-  iblock = 1
-  this_block = get_block(blocks_clinic(iblock),iblock)
-  first_col_begin = this_block%j_glob(this_block%jb)
-  first_row_begin = this_block%i_glob(this_block%ib)
-  first_col_begin_duplicate = this_block%j_glob(this_block%jb)
-  num_row = 1
-  num_col = 1
-
-  do iblock = 1,nblocks_clinic
-      this_block = get_block(blocks_clinic(iblock),iblock)
-
-         if(this_block%j_glob(this_block%jb) /=  first_col_begin ) then
-
-         num_row = num_row + 1
-         first_col_begin = this_block%j_glob(this_block%jb)
-
-         endif
-
-         if(this_block%i_glob(this_block%ib) /=  first_row_begin .and. this_block%j_glob(this_block%jb) == first_col_begin_duplicate) then
-
-         num_col = num_col + 1
-
-         endif
-
-   enddo
-
-  print *,"number of rows and cols are",num_row,num_col,my_task
-
-
-
-
    ib = 3
    ie = nx_block_unified - 2
    jb = 3
