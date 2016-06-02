@@ -145,13 +145,13 @@
 !GRID related variables
 
    !dir$ attributes offload : mic :: KMT_UNIFIED
-   integer (POP_i4), dimension(nx_block_unified,ny_block_unified,1), &
+   integer (POP_i4), dimension(:,:,:),allocatable, &
       public :: &
       KMT_UNIFIED
 
    !dir$ attributes offload : mic :: KMTN_UNIFIED
    !dir$ attributes offload : mic :: KMTE_UNIFIED
-   integer (POP_i4), dimension(nx_block_unified,ny_block_unified,1), &
+   integer (POP_i4), dimension(:,:,:),allocatable, &
       public :: &
       KMTN_UNIFIED,KMTE_UNIFIED
 
@@ -499,6 +499,12 @@
    if( .not. allocated(DZT_unified) ) then
 
    allocate (DZT_unified(nx_block_unified,ny_block_unified,0:km+1,1))
+
+   allocate (KMT_UNIFIED(nx_block_unified,ny_block_unified,1))
+
+   allocate (KMTE_UNIFIED(nx_block_unified,ny_block_unified,1))
+
+   allocate (KMTN_UNIFIED(nx_block_unified,ny_block_unified,1))
 
    endif
 
