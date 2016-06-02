@@ -312,6 +312,12 @@
    integer (POP_i4) :: &
       nml_error           ! namelist i/o error flag
 
+   integer :: iblock,num_row,num_col,first_col_begin,first_row_begin,first_col_begin_duplicate
+
+     type (block) ::        &
+      this_block           ! block information for current block
+
+
 !-----------------------------------------------------------------------
 !
 !  read input namelist for grid setup options
